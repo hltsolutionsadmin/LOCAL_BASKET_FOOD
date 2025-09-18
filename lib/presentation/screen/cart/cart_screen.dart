@@ -153,6 +153,83 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    final proceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, 
+      builder: (context) {
+        return Dialog(
+          backgroundColor: AppColor.White,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.orange, size: 60),
+                const SizedBox(height: 16),
+                const Text(
+                  "Before You Proceed",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "⚠️ Payments once made cannot be cancelled or refunded.\n\n"
+                  "Please review your order before proceeding.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        foregroundColor: Colors.black87,
+                      ),
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text("Cancel"),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColor.PrimaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        "I Understand, Proceed",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (proceed != true) return;
+
     final amountInPaise = (getTotalAmount() * 100).toInt();
     final orderResp = await _createOrder(amountInPaise);
     if (orderResp["status"] != "success") {
@@ -171,6 +248,7 @@ class _CartScreenState extends State<CartScreen> {
       'theme': {'color': '#081724'}
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
