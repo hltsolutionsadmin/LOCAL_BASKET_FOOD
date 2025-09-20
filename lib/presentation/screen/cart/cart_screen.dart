@@ -47,6 +47,8 @@ class _CartScreenState extends State<CartScreen> {
   int? cartId;
   bool loading = false;
   String selectedAddress = "Add Address";
+  bool selfOrder = true; 
+
 
   static const double gstPercentage = 0.05;
   static const double deliveryCharge = 30.0;
@@ -270,10 +272,16 @@ class _CartScreenState extends State<CartScreen> {
         BlocListener<GetCartCubit, GetCartState>(
           listener: (context, state) {
             if (state is GetCartLoaded) {
-              setState(() => cartId = state.cart.id);
+              setState(() {
+                cartId = state.cart.id;
+                // pull existing notes & selfOrder from API
+                notesController.text = state.cart.notes ?? "";
+                selfOrder = state.cart.selfOrder ?? true;
+              });
             }
           },
         ),
+
         BlocListener<PaymentCubit, PaymentState>(
           listener: (context, state) {
             if (state is PaymentRefundSuccess) {
@@ -335,6 +343,44 @@ class _CartScreenState extends State<CartScreen> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: selfOrder,
+                    activeColor: AppColor.PrimaryColor,
+                    onChanged: (val) {
+                      setState(() => selfOrder = val ?? true);
+
+                      final itemsPayload = selectedItems.map((item) {
+                        final name = item['name'];
+                        final quantity = cart[name] ?? 1;
+                        return {
+                          "productId": item['productId'] ?? item['id'],
+                          "quantity": quantity,
+                          "price": item['price'] ?? 0,
+                        };
+                      }).toList();
+
+                      final payload = {
+                        "notes": notesController.text.trim(),
+                        "selfOrder": selfOrder,
+                        "items": itemsPayload,
+                      };
+
+                      context.read<ProductsAddToCartCubit>().addToCart(payload);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "Self Order (I’ll pick it myself)",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: InkWell(
                 onTap: () async {
                   final newNote = await showDialog<String>(
@@ -377,12 +423,14 @@ class _CartScreenState extends State<CartScreen> {
 
                     final Map<String, dynamic> payload = {
                       "notes": notesController.text.trim(),
+                      "selfOrder": selfOrder,
                       "items": itemsPayload,
                     };
 
                     context.read<ProductsAddToCartCubit>().addToCart(payload);
                   }
                 },
+
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -396,6 +444,7 @@ class _CartScreenState extends State<CartScreen> {
                       )
                     ],
                   ),
+                  
                   child: Row(
                     children: [
                       const Icon(Icons.notes_rounded, color: Colors.orange),

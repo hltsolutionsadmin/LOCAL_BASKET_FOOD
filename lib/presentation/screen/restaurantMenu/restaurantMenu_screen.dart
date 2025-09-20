@@ -175,16 +175,25 @@ class _RestaurantMenuScreenState extends State<RestaurantMenuScreen> {
       if (idx != -1) menuItems[idx] = item;
     });
 
-final List<Map<String, dynamic>> items = selectedItems
+    final List<Map<String, dynamic>> items = selectedItems
         .map((item) => {
               "productId": item.id,
-              "quantity": qty,
+              "quantity": cart[item.name] ?? 0,
               // "price": item.price ?? 0,
             })
         .toList();
+    final cartState = context.read<GetCartCubit>().state;
+    String notes = "";
+    bool selfOrder = true;
+
+    if (cartState is GetCartLoaded) {
+      notes = cartState.cart.notes ?? "";
+      selfOrder = cartState.cart.selfOrder ?? true;
+    }
 
     final Map<String, dynamic> payload = {
-      "notes": "notesController.text.trim()",
+      "notes": notes,
+      "selfOrder": selfOrder,
       "items": items,
     };
 
@@ -320,7 +329,6 @@ final List<Map<String, dynamic>> items = selectedItems
       isBottomSheetVisible = true;
     });
   }
-
 
   void _onBottomSheetVisibilityChanged(bool visible) {
     if (!mounted) return;
@@ -659,7 +667,7 @@ final List<Map<String, dynamic>> items = selectedItems
 
                             return ListView.builder(
                               padding: const EdgeInsets.fromLTRB(
-                                  16.0, 16.0, 16.0, 100.0), 
+                                  16.0, 16.0, 16.0, 100.0),
                               itemCount: filteredItems.length,
                               itemBuilder: (context, index) {
                                 final item = filteredItems[index];
