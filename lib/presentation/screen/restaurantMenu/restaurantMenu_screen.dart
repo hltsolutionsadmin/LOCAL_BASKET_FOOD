@@ -21,11 +21,13 @@ import 'package:local_basket/presentation/cubit/restaurants/guestMenuByRestauran
 
 class RestaurantMenuScreen extends StatefulWidget {
   final String restaurantName, restaurantId;
+  final String? couponCode;
   final bool isGuest;
   const RestaurantMenuScreen({
     super.key,
     required this.restaurantName,
     required this.restaurantId,
+    this.couponCode,
     this.isGuest = false,
   });
 

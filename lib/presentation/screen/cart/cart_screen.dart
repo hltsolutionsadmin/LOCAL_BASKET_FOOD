@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:local_basket/presentation/cubit/cart/clearCart/clearCart_cubit.dart';
+import 'package:local_basket/presentation/cubit/offers/restaurant_offers/validate_offers/validate_offer_cubit.dart';
+import 'package:local_basket/presentation/cubit/offers/restaurant_offers/validate_offers/validate_offer_state.dart';
 import 'package:local_basket/presentation/screen/widgets/cart/address_card.dart';
 import 'package:local_basket/presentation/screen/widgets/cart/cart_item_card.dart';
 import 'package:local_basket/presentation/screen/widgets/cart/checkout_bottom_bar.dart';
@@ -41,6 +43,10 @@ class _CartScreenState extends State<CartScreen> {
   static const razorPayKey = 'rzp_test_aa2AmRQV2HpRyT';
   static const razorPaySecret = 'UMfObdnXjWv3opzzTwHwAiv8';
   final TextEditingController notesController = TextEditingController();
+
+  final TextEditingController couponController = TextEditingController();
+  bool _isCouponApplied = false;
+
 
   final Map<String, int> cart = {};
   final List<Map<String, dynamic>> selectedItems = [];
@@ -125,8 +131,11 @@ class _CartScreenState extends State<CartScreen> {
       });
 
   double getGSTAmount() => getSubtotal() * gstPercentage;
-  double getTotalAmount() =>
-      (getSubtotal() + getGSTAmount() + deliveryCharge).floorToDouble();
+  double getTotalAmount() {
+    if (_isCouponApplied) return 1.0;
+    return (getSubtotal() + getGSTAmount() + deliveryCharge).floorToDouble();
+  }
+
   int getCartItemCount() => cart.values.fold(0, (sum, q) => sum + q);
 
   Future<Map<String, dynamic>> _createOrder(int amount) async {
@@ -281,6 +290,41 @@ class _CartScreenState extends State<CartScreen> {
             }
           },
         ),
+
+        BlocListener<ValidateOfferCubit, ValidateOfferState>(
+          listener: (context, state) {
+            if (state is ValidateOfferSuccess) {
+              final res = state.validateOfferModel;
+
+              if (res.message?.toLowerCase() == "true") {
+                CustomSnackbars.showSuccessSnack(
+                  context: context,
+                  title: "Coupon Applied",
+                  message: "Offer applied successfully!",
+                );
+                setState(() {
+                  _isCouponApplied = true;
+                });
+              } else {
+                CustomSnackbars.showErrorSnack(
+                  context: context,
+                  title: "Offer Expired",
+                  message: res.data ?? "Coupon is not valid",
+                );
+                setState(() {
+                  _isCouponApplied = false;
+                });
+              }
+            } else if (state is ValidateOfferFailure) {
+              CustomSnackbars.showErrorSnack(
+                context: context,
+                title: "Error",
+                message: state.error,
+              );
+            }
+          },
+        ),
+
 
         BlocListener<PaymentCubit, PaymentState>(
           listener: (context, state) {
@@ -470,6 +514,42 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: couponController,
+                      decoration: InputDecoration(
+                        hintText: "Enter coupon code",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<ValidateOfferCubit>().validateOffer();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColor.PrimaryColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text("Apply"),
+                  ),
+                ],
+              ),
+            ),
+
             Expanded(
               child: selectedItems.isEmpty
                   ? const Center(child: Text("No items in cart"))
@@ -533,6 +613,7 @@ class _CartScreenState extends State<CartScreen> {
                           return Padding(
                             padding: const EdgeInsets.symmetric(
                                 vertical: 20, horizontal: 16),
+                                
                             child: CheckoutBottomBar(
                               subtotal: getSubtotal(),
                               gst: getGSTAmount(),

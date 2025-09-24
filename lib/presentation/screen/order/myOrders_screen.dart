@@ -467,6 +467,8 @@ class _MyOrdersState extends State<MyOrders> {
       case 'READY_FOR_PICKUP':
         return 2;
       case 'PICKED_UP':
+      case 'READY_FOR_SELF_PICKUP':
+
         return 3;
       case 'DELIVERED':
         return 4;
