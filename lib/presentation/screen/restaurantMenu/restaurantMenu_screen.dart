@@ -38,7 +38,7 @@ class RestaurantMenuScreen extends StatefulWidget {
 class _RestaurantMenuScreenState extends State<RestaurantMenuScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   Map<String, int> cart = {};
-  int totalItems = 0, page = 0, size = 10;
+  int totalItems = 0, page = 0, size = 300;
   PersistentBottomSheetController? _bottomSheetController;
   bool get _isCouponFlow => widget.couponCode != null;
   bool isBottomSheetVisible = false;
