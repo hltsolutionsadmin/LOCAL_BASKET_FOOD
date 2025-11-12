@@ -15,10 +15,8 @@ class OffersCarousel extends StatefulWidget {
 }
 
 class _OffersCarouselState extends State<OffersCarousel> {
-  final PageController _pageController = PageController(
-    viewportFraction: 0.85,
-    initialPage: 1000,
-  );
+  final PageController _pageController =
+      PageController(viewportFraction: 1, initialPage: 1000);
 
   double _currentPage = 1000.0;
   Timer? _autoScrollTimer;
@@ -28,15 +26,16 @@ class _OffersCarouselState extends State<OffersCarousel> {
   void initState() {
     super.initState();
 
-    // If not guest, fetch offers
     if (!widget.isGuest) {
       context.read<RestaurantOffersCubit>().fetchRestaurantOffers();
     }
 
     _pageController.addListener(() {
-      setState(() {
-        _currentPage = _pageController.page ?? _currentPage;
-      });
+      if (mounted) {
+        setState(() {
+          _currentPage = _pageController.page ?? _currentPage;
+        });
+      }
     });
 
     _startAutoScroll();
@@ -47,7 +46,7 @@ class _OffersCarouselState extends State<OffersCarousel> {
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (!_pageController.hasClients || _isUserInteracting) return;
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 600),
+        duration: const Duration(milliseconds: 700),
         curve: Curves.easeInOut,
       );
     });
@@ -62,85 +61,171 @@ class _OffersCarouselState extends State<OffersCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    // 🧍 Guest users see nothing
-    if (widget.isGuest) {
-      return const SizedBox.shrink();
-    }
+    if (widget.isGuest) return _buildComingSoonCarousel();
 
     return BlocBuilder<RestaurantOffersCubit, RestaurantOffersState>(
       builder: (context, state) {
         if (state is RestaurantOffersLoading) {
-          return const SizedBox.shrink(); // no loader for clean UI
+          return const Center(child: CircularProgressIndicator());
         } else if (state is RestaurantOffersError) {
-          return const SizedBox.shrink(); // no error text, silent fail
+          return _buildComingSoonCarousel();
         } else if (state is RestaurantOffersLoaded) {
           final offers = state.offers.data?.content ?? [];
 
-          // If API returns empty list → hide section completely
-          if (offers.isEmpty) {
-            return const SizedBox.shrink();
-          }
+          if (offers.isEmpty) return _buildComingSoonCarousel();
 
-          // 🏷 Offers carousel
           return GestureDetector(
             onPanDown: (_) => _isUserInteracting = true,
             onPanCancel: () => _isUserInteracting = false,
             onPanEnd: (_) => _isUserInteracting = false,
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 160,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    itemBuilder: (context, index) {
-                      final Content offer = offers[index % offers.length];
-                      final gradientColors =
-                          _getGradientColors(offer.offerType);
-                      final accentColor = gradientColors.last;
-
-                      final double scale = (_currentPage - index).abs() < 1.0
-                          ? 1 - (_currentPage - index).abs() * 0.1
-                          : 0.9;
-
-                      return Transform.scale(
-                        scale: scale,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.easeOutQuint,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: OffersCard(
-                            tag: offer.couponCode ?? "OFFER",
-                            title: offer.name ?? "",
-                            subtitle: offer.description ?? "",
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => DashboardScreen(
-                                    couponCode: offer.couponCode,
-                                  ),
-                                ),
-                              );
-                            },
-                            gradientColors: gradientColors,
-                            accentColor: accentColor,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+            child: SizedBox(
+              height: 180,
+              child: PageView.builder(
+                controller: _pageController,
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
                 ),
-              ],
+                itemBuilder: (context, index) {
+                  final Content offer = offers[index % offers.length];
+                  final gradientColors = _getGradientColors(offer.offerType);
+                  final accentColor = gradientColors.last;
+
+                  final double scale = (1 -
+                      (((_currentPage - index).abs() * 0.1).clamp(0.0, 0.1)));
+
+                  return Transform.scale(
+                    scale: scale,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOutQuint,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: OffersCard(
+                        tag: offer.couponCode ?? "OFFER",
+                        title: offer.name ?? "",
+                        subtitle: offer.description ?? "",
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DashboardScreen(
+                                couponCode: offer.couponCode,
+                              ),
+                            ),
+                          );
+                        },
+                        gradientColors: gradientColors,
+                        accentColor: accentColor,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           );
         }
 
-        return const SizedBox.shrink();
+        return _buildComingSoonCarousel();
       },
     );
   }
 
-  // Helper for dynamic gradients based on offer type
+  /// ✅ Carousel for guest users or fallback state
+  Widget _buildComingSoonCarousel() {
+    final List<String> images = [
+      // Original first image
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
+      // Your provided new image
+      'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
+    ];
+
+    return GestureDetector(
+      onPanDown: (_) => _isUserInteracting = true,
+      onPanCancel: () => _isUserInteracting = false,
+      onPanEnd: (_) => _isUserInteracting = false,
+      child: SizedBox(
+        height: 180,
+        width: double.infinity,
+        child: PageView.builder(
+          controller: _pageController,
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          itemBuilder: (context, index) {
+            final imageUrl = images[index % images.length];
+            final double scale =
+                (1 - (((_currentPage - index).abs() * 0.1).clamp(0.0, 0.1)));
+
+            return Transform.scale(
+              scale: scale,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                child: _buildComingSoonBanner(imageUrl),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComingSoonBanner(String imageUrl) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              color: Colors.black.withOpacity(0.45),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.restaurant_rounded,
+                    size: 44, color: Colors.white),
+                const SizedBox(height: 10),
+                const Text(
+                  "Local Basket",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Coming Soon 🍽️",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.orange.shade200,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<Color> _getGradientColors(String? offerType) {
     switch (offerType) {
       case "DISCOUNT":

@@ -476,6 +476,12 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "infinite_carousel",
+      "rootUri": "file:///Users/jagadeesh/.pub-cache/hosted/pub.dev/infinite_carousel-1.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
       "name": "internet_connection_checker_plus",
       "rootUri": "file:///Users/jagadeesh/.pub-cache/hosted/pub.dev/internet_connection_checker_plus-2.7.2",
       "packageUri": "lib/",
