@@ -153,7 +153,7 @@ class _OtpScreenState extends State<OtpScreen> {
                                 backgroundColor: Colors.white,
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
-                                  child: Image.asset(appLogo),
+                                  child: Image.asset(appLogo2),
                                 ),
                               ),
                               const SizedBox(height: 18),
