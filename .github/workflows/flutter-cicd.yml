@@ -51,6 +51,11 @@ jobs:
         run: |
           printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r' | base64 --decode > android/upload.jks
 
+      - name: Verify keystore contains alias
+        run: |
+          keytool -list -keystore android/upload.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" | sed -n '1,120p'
+          keytool -list -keystore android/upload.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -alias "${{ secrets.KEY_ALIAS }}" > /dev/null
+
       - name: Create key.properties
         run: |
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
