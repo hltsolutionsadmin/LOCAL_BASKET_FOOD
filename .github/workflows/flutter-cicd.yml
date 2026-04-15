@@ -32,6 +32,21 @@ jobs:
           fi
           printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r' | base64 --decode > /dev/null
 
+      - name: Validate signing secrets
+        run: |
+          if [[ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]]; then
+            echo "ERROR: KEYSTORE_PASSWORD secret is empty" >&2
+            exit 1
+          fi
+          if [[ -z "${{ secrets.KEY_ALIAS }}" ]]; then
+            echo "ERROR: KEY_ALIAS secret is empty" >&2
+            exit 1
+          fi
+          if [[ -z "${{ secrets.KEY_PASSWORD }}" ]]; then
+            echo "ERROR: KEY_PASSWORD secret is empty" >&2
+            exit 1
+          fi
+
       - name: Decode Keystore
         run: |
           printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r' | base64 --decode > android/upload.jks
@@ -45,6 +60,10 @@ jobs:
 
       - name: Build AAB
         run: flutter build appbundle --release
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload to Play Store
         uses: r0adkll/upload-google-play@v1
