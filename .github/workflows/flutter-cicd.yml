@@ -30,11 +30,11 @@ jobs:
             echo "ERROR: KEYSTORE_BASE64 secret is empty" >&2
             exit 1
           fi
-          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\r' | base64 --decode > /dev/null
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r' | base64 --decode > /dev/null
 
       - name: Decode Keystore
         run: |
-          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\r' | base64 --decode > upload.jks
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r' | base64 --decode > upload.jks
 
       - name: Create key.properties
         run: |
