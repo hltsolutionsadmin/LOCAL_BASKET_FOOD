@@ -34,7 +34,7 @@ jobs:
 
       - name: Decode Keystore
         run: |
-          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r' | base64 --decode > upload.jks
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\n\r' | base64 --decode > android/upload.jks
 
       - name: Create key.properties
         run: |
