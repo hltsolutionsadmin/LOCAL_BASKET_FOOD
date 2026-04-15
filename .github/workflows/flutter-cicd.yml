@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - cici_pipeline
 
 jobs:
   build:
@@ -25,9 +24,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Validate KEYSTORE_BASE64
+        run: |
+          if [[ -z "${{ secrets.KEYSTORE_BASE64 }}" ]]; then
+            echo "ERROR: KEYSTORE_BASE64 secret is empty" >&2
+            exit 1
+          fi
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\r' | base64 --decode > /dev/null
+
       - name: Decode Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > upload.jks
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '\r' | base64 --decode > upload.jks
 
       - name: Create key.properties
         run: |
