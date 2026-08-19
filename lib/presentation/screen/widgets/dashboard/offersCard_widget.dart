@@ -9,7 +9,9 @@ import 'package:local_basket/presentation/cubit/pools/pools_state.dart';
 import 'package:local_basket/presentation/screen/profile/pool_screen.dart';
 
 class OffersCarousel extends StatefulWidget {
-  const OffersCarousel({super.key});
+  final double height;
+
+  const OffersCarousel({super.key, this.height = 260});
 
   @override
   State<OffersCarousel> createState() => _OffersCarouselState();
@@ -135,7 +137,7 @@ class _OffersCarouselState extends State<OffersCarousel> {
     ];
 
     return SizedBox(
-      height: 260,
+      height: widget.height,
       child: PageView.builder(
         controller: _pageController,
         itemBuilder: (context, index) {
@@ -211,94 +213,95 @@ class _OffersCarouselState extends State<OffersCarousel> {
                         : const SizedBox(),
               ),
               Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 18,
-                  child: Center(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(30),
-                        onTap: onParticipateTap,
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient:
+                left: 0,
+                right: 0,
+                bottom: 18,
+                child: Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(30),
+                      onTap: onParticipateTap,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient:
+                              hasActivePool
+                                  ? LinearGradient(
+                                    colors: [
+                                      AppColor.PrimaryColor,
+                                      const Color(0xFFFF7A45),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  )
+                                  : LinearGradient(
+                                    colors: [
+                                      Colors.grey.shade500,
+                                      Colors.grey.shade400,
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color:
                                 hasActivePool
-                                    ? LinearGradient(
-                                      colors: [
-                                        AppColor.PrimaryColor,
-                                        const Color(0xFFFF7A45),
-                                      ],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                    )
-                                    : LinearGradient(
-                                      colors: [
-                                        Colors.grey.shade500,
-                                        Colors.grey.shade400,
-                                      ],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                    ),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color:
-                                  hasActivePool
-                                      ? Colors.white
-                                      : Colors.white.withOpacity(0.6),
-                              width: 1.5,
-                            ),
-                            boxShadow:
-                                hasActivePool
-                                    ? [
-                                      BoxShadow(
-                                        color: AppColor.PrimaryColor
-                                            .withOpacity(0.5),
-                                        blurRadius: 14,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ]
-                                    : null,
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.6),
+                            width: 1.5,
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 26,
-                              vertical: 12,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  participateIcon,
+                          boxShadow:
+                              hasActivePool
+                                  ? [
+                                    BoxShadow(
+                                      color: AppColor.PrimaryColor.withOpacity(
+                                        0.5,
+                                      ),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ]
+                                  : null,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 26,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                participateIcon,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                participateLabel,
+                                style: const TextStyle(
                                   color: Colors.white,
-                                  size: 18,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.4,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  participateLabel,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.4,
-                                  ),
+                              ),
+                              if (hasActivePool) ...[
+                                const SizedBox(width: 6),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: Colors.white,
+                                  size: 16,
                                 ),
-                                if (hasActivePool) ...[
-                                  const SizedBox(width: 6),
-                                  const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ],
                               ],
-                            ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
+              ),
             ],
           );
 
@@ -306,6 +309,7 @@ class _OffersCarouselState extends State<OffersCarousel> {
             scale: scale,
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 6),
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 image: DecorationImage(
@@ -313,7 +317,7 @@ class _OffersCarouselState extends State<OffersCarousel> {
                       isNetwork
                           ? NetworkImage(image)
                           : AssetImage(image) as ImageProvider,
-                  fit: BoxFit.contain,
+                  fit: BoxFit.cover,
                 ),
               ),
               child: Material(

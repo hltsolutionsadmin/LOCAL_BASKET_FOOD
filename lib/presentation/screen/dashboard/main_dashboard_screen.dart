@@ -5,7 +5,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:local_basket/components/custom_topbar.dart';
 import 'package:local_basket/core/constants/colors.dart';
 import 'package:local_basket/presentation/cubit/notifications/fcmToken/fcm_token_cubit.dart';
+import 'package:local_basket/presentation/cubit/address/getAddress/getAddress_cubit.dart';
+import 'package:local_basket/presentation/cubit/address/getAddress/getAddress_state.dart';
 import 'package:local_basket/presentation/screen/notifications/notifications_screen.dart';
+import 'package:local_basket/presentation/screen/order/myOrders_screen.dart';
+import 'package:local_basket/presentation/screen/address/address_screen.dart';
+import 'package:local_basket/presentation/screen/profile/offers_screen.dart';
 import 'package:local_basket/presentation/screen/profile/profile_screen.dart';
 import 'package:local_basket/presentation/screen/widgets/dashboard/offersCard_widget.dart';
 import 'dashboard_screen.dart';
@@ -23,6 +28,7 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
+  int _selectedNavIndex = 0;
   final NotificationServices _notificationServices = NotificationServices();
 
   Future<void> _normalizeOfferStateOnFoodTap() async {
@@ -44,6 +50,11 @@ class _MainDashboardState extends State<MainDashboard> {
   void initState() {
     super.initState();
     _initNotifications();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<GetAddressCubit>().fetchAddress(context);
+      }
+    });
   }
 
   Future<void> _initNotifications() async {
@@ -111,185 +122,525 @@ class _MainDashboardState extends State<MainDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColor.White,
-      appBar: CustomAppBar(
-        title: 'Localbasket',
-        showBackButton: false,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_none_rounded,
-              color: Colors.white,
+      backgroundColor: const Color(0xFFFFFBF8),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _openAddressScreen,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              color: AppColor.PrimaryColor,
+                              size: 21,
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(child: _SavedHomeAddress()),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Colors.grey,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                _HeaderIcon(
+                  icon: Icons.notifications_none_rounded,
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen(),
+                        ),
+                      ),
+                ),
+              ],
             ),
-            onPressed: () {
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: _openFoodDashboard,
+              child: Container(
+                height: 46,
+                padding: const EdgeInsets.symmetric(horizontal: 13),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE9E5E2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, color: Colors.grey.shade500, size: 20),
+                    const SizedBox(width: 9),
+                    const Expanded(
+                      child: Text(
+                        'Search for restaurants or cuisines',
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                    ),
+                    Icon(
+                      Icons.tune_rounded,
+                      color: AppColor.PrimaryColor,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const OffersCarousel(height: 139),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _QuickCategory(
+                  icon: Icons.delivery_dining,
+                  title: 'Food\nDelivery',
+                  onTap: _openFoodDashboard,
+                ),
+                _QuickCategory(
+                  icon: Icons.flash_on,
+                  title: 'Instant\nDelivery',
+                  onTap: _openFoodDashboard,
+                ),
+                _QuickCategory(
+                  icon: Icons.storefront,
+                  title: 'Dine &\nPick Up',
+                  onTap: _openFoodDashboard,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(
+              title: 'Top picks for you',
+              onTap: _openFoodDashboard,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 190,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: const [
+                  _RestaurantCard(
+                    name: 'Pizza Time',
+                    image: 'assets/images/avif/pizza.avif',
+                    rating: '4.4',
+                    time: '30 mins',
+                    price: 'Pizza, Italian',
+                  ),
+                  _RestaurantCard(
+                    name: 'Biryani House',
+                    image: 'assets/images/avif/biriyani.avif',
+                    rating: '4.6',
+                    time: '25 mins',
+                    price: 'Biryani, North Indian',
+                  ),
+                  _RestaurantCard(
+                    name: 'Fresh Rolls',
+                    image: 'assets/images/jpg/rolls.jpg',
+                    rating: '4.3',
+                    time: '20 mins',
+                    price: 'Rolls, Snacks',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            _SectionTitle(title: 'Offers for you', onTap: () {}),
+            const SizedBox(height: 11),
+            _buildDiscountCard(),
+            const SizedBox(height: 12),
+            _buildFlatOfferCard(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedNavIndex,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppColor.PrimaryColor,
+        unselectedItemColor: Colors.grey,
+        selectedFontSize: 11,
+        unselectedFontSize: 11,
+        onTap: (index) {
+          setState(() {
+            _selectedNavIndex = index;
+          });
+
+          switch (index) {
+            case 1:
+              _openFoodDashboard();
+            case 2:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                MaterialPageRoute(builder: (_) => const MyOrders()),
               );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OffersScreen()),
+              );
+            case 4:
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const ProfileScreen()),
               );
-            },
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search_outlined),
+            label: "Search",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long_outlined),
+            label: "Orders",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.local_offer_outlined),
+            label: "Offers",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: "Profile",
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    );
+  }
+
+  void _openFoodDashboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DashboardScreen()),
+    );
+  }
+
+  void _openAddressScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddressScreen()),
+    ).then((_) {
+      if (mounted) {
+        context.read<GetAddressCubit>().fetchAddress(context);
+      }
+    });
+  }
+
+  Widget _buildDiscountCard() {
+    return _OfferRow(
+      color: const Color(0xFFF1F2FF),
+      accent: const Color(0xFF26358F),
+      title: '60% OFF',
+      subtitle: 'UPTO ₹120',
+      detail: 'On orders above ₹199',
+      code: 'WELCOME60',
+    );
+  }
+
+  Widget _buildFlatOfferCard() {
+    return _OfferRow(
+      color: const Color(0xFFFFF2E8),
+      accent: AppColor.PrimaryColor,
+      title: 'FLAT ₹80 OFF',
+      subtitle: 'On orders above ₹249',
+      detail: 'Use code FLAT80',
+      code: 'FLAT80',
+    );
+  }
+}
+
+class _SavedHomeAddress extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<GetAddressCubit, GetAddressState>(
+      builder: (context, state) {
+        String addressText = 'Getting address...';
+
+        if (state is GetAddressSuccess) {
+          if (state.addressModel.content.isEmpty) {
+            addressText = 'Add a delivery address';
+          } else {
+            final address = state.addressModel.content.first;
+            final parts =
+                [
+                      address.addressLine1,
+                      address.city,
+                      address.state,
+                      address.postalCode,
+                    ]
+                    .whereType<String>()
+                    .map((part) => part.trim())
+                    .where((part) => part.isNotEmpty)
+                    .toList();
+            addressText = parts.isEmpty ? 'Saved address' : parts.join(', ');
+          }
+        } else if (state is GetAddressFailure) {
+          addressText = 'Add a delivery address';
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Home', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text(
+              addressText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                color:
+                    addressText == 'Add a delivery address'
+                        ? AppColor.PrimaryColor
+                        : Colors.grey,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HeaderIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderIcon({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, color: AppColor.PrimaryColor, size: 23),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white,
+        side: const BorderSide(color: Color(0xFFE9E5E2)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final VoidCallback onTap;
+
+  const _SectionTitle({required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+        ),
+        GestureDetector(
+          onTap: onTap,
+          child: Text(
+            'See all',
+            style: TextStyle(
+              color: AppColor.PrimaryColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OfferRow extends StatelessWidget {
+  final Color color;
+  final Color accent;
+  final String title;
+  final String subtitle;
+  final String detail;
+  final String code;
+
+  const _OfferRow({
+    required this.color,
+    required this.accent,
+    required this.title,
+    required this.subtitle,
+    required this.detail,
+    required this.code,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
         children: [
-          /// 🔥 Offers Carousel
-          const OffersCarousel(),
-
-          const SizedBox(height: 24),
-
-          /// 🍽️ Food Banner
-          _BannerCard(
-            title: "Food",
-            subtitle: "Your online aisle of taste",
-            imageUrl:
-                "https://images.pexels.com/photos/958545/pexels-photo-958545.jpeg",
-            gradient: [Color(0xFF1860EF), Color(0xFF5A95F5)],
-            onTap: () async {
-              await _normalizeOfferStateOnFoodTap();
-              if (!mounted) return;
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DashboardScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-
-          _BannerCard(
-            title: "Special Zone",
-            subtitle: "Exclusive deals and limited-time offers",
-            imageUrl:
-                "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
-            gradient: [Color(0xFFFF8C00), Color(0xFFFFC107)],
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (_) =>
-                          const _UnderDevelopmentScreen(title: "Special Zone"),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-
-          /// 🛒 Grocery Banner
-
-          /// 🥩 Fresh Meat Banner
-          _BannerCard(
-            title: "Fresh Meat",
-            subtitle: "Top quality, handpicked cuts",
-            imageUrl:
-                "https://images.pexels.com/photos/10201880/pexels-photo-10201880.jpeg",
-            gradient: [Color(0xFFE53935), Color(0xFFD81B60)],
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (_) => const _UnderDevelopmentScreen(title: "Fresh Meat"),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-
-          _BannerCard(
-            title: "Grocery",
-            subtitle: "The most coveted grocery brands",
-            imageUrl:
-                "https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg",
-            gradient: [Color(0xFF9C27B0), Color(0xFF673AB7)],
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (_) => const _UnderDevelopmentScreen(title: "Grocery"),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
-              );
-            },
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
+          Text(
+            code,
+            style: TextStyle(
+              color: accent,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// 🔹 Banner Card Widget
-class _BannerCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String imageUrl;
-  final List<Color> gradient;
-  final VoidCallback onTap;
+class _RestaurantCard extends StatelessWidget {
+  final String name;
+  final String image;
+  final String rating;
+  final String time;
+  final String price;
 
-  const _BannerCard({
-    required this.title,
-    required this.subtitle,
-    required this.imageUrl,
-    required this.gradient,
-    required this.onTap,
+  const _RestaurantCard({
+    required this.name,
+    required this.image,
+    required this.rating,
+    required this.time,
+    required this.price,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
+    return Container(
+      width: 155,
+      margin: const EdgeInsets.only(right: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              image,
+              height: 125,
+              width: 155,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+          const SizedBox(height: 3),
+          Row(
+            children: [
+              const Icon(Icons.star, size: 13, color: Colors.green),
+              const SizedBox(width: 3),
+              Text(rating, style: const TextStyle(fontSize: 11)),
+              const SizedBox(width: 6),
+              Text(
+                "• $time",
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
+          Text(price, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickCategory extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback? onTap;
+
+  const _QuickCategory({required this.icon, required this.title, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 140,
+        height: 92,
+        width: 92,
         decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          image: DecorationImage(
-            image: NetworkImage(imageUrl),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.4),
-              BlendMode.darken,
-            ),
-          ),
+          border: Border.all(color: Colors.grey.shade200),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.deepOrange.withOpacity(0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.deepOrange, size: 23),
             ),
-          ),
+            const SizedBox(height: 7),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                height: 1.1,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -19,13 +19,11 @@ import 'package:local_basket/presentation/cubit/restaurants/getRestaurantsByProd
 import 'package:local_basket/presentation/cubit/restaurants/getRestaurantsByProductName/getRestaurantsByProductName_state.dart';
 import 'package:local_basket/presentation/screen/cart/cart_screen.dart';
 import 'package:local_basket/presentation/screen/dashboard/main_dashboard_screen.dart';
-import 'package:local_basket/presentation/screen/profile/profile_screen.dart';
 import 'package:local_basket/presentation/screen/restaurantMenu/restaurantMenu_screen.dart';
 import 'package:local_basket/presentation/screen/widgets/dashboard/LocationPermissionDialog.dart';
 import 'package:local_basket/presentation/screen/widgets/dashboard/bottom_card_widget.dart';
 import 'package:local_basket/presentation/screen/widgets/dashboard/clear_cart_dialog.dart';
 import 'package:local_basket/presentation/screen/widgets/dashboard/foodItemCard.dart';
-import 'package:local_basket/presentation/screen/widgets/dashboard/locationHeader.dart';
 import 'package:local_basket/components/searchBar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
@@ -106,12 +104,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _searchFocusNode = FocusNode();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       debugPrint('🔄 Dashboard appeared → fetching stored FCM token');
       await context.read<FcmTokenCubit>().fetchFcmToken();
+      if (!mounted) return;
       await _requestNotificationPermission();
+      if (!mounted) return;
       await _fetchCart();
+      if (!mounted) return;
       await Future.delayed(const Duration(milliseconds: 1000));
+      if (!mounted) return;
       await _requestLocationPermission();
+      if (!mounted) return;
       await _maybeClearCartForOfferFlow();
     });
 
@@ -182,9 +186,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _clearCart() async {
-    await context
-        .read<ClearCartCubit>()
-        .clearCart(context, cartId: cartData?.id);
+    await context.read<ClearCartCubit>().clearCart(
+      context,
+      cartId: cartData?.id,
+    );
     await _fetchCart();
   }
 
@@ -215,9 +220,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (state is GetCartLoaded) {
         final hasItems = (state.cart.totalCount ?? 0) > 0;
         if (hasItems) {
-          await context
-              .read<ClearCartCubit>()
-              .clearCart(context, cartId: state.cart.id);
+          await context.read<ClearCartCubit>().clearCart(
+            context,
+            cartId: state.cart.id,
+          );
           await cartCubit.fetchCart(context);
         }
       }
@@ -247,6 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _fetchCart() async {
+    if (!mounted) return;
     await context.read<GetCartCubit>().fetchCart(context);
     if (!mounted) return;
 
@@ -260,10 +267,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             cartList.isNotEmpty && (cartData?.totalCount ?? 0) > 0;
       });
     }
-  }
-
-  void _onLocationChanged() {
-    _loadCoordinatesAndFetchRestaurants();
   }
 
   Future<void> _refreshRestaurants() async {
@@ -319,9 +322,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     debugPrint(" Fetching restaurants with lat=$latitude, lon=$longitude");
 
-    context
-        .read<GetNearbyRestaurantsCubit>()
-        .fetchNearbyRestaurants(_nearbyStoresParams(), forceRefresh: forceRefresh);
+    context.read<GetNearbyRestaurantsCubit>().fetchNearbyRestaurants(
+      _nearbyStoresParams(),
+      forceRefresh: forceRefresh,
+    );
 
     _startStoreStatusPolling();
   }
@@ -342,12 +346,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _startStoreStatusPolling() {
     _storeStatusPollTimer?.cancel();
     _storeStatusPollTimer = Timer.periodic(_storeStatusPollInterval, (_) {
-      if (!mounted || _isOutOfServiceArea || latitude == null || longitude == null) {
+      if (!mounted ||
+          _isOutOfServiceArea ||
+          latitude == null ||
+          longitude == null) {
         return;
       }
-      context
-          .read<GetNearbyRestaurantsCubit>()
-          .pollNearbyRestaurants(_nearbyStoresParams());
+      context.read<GetNearbyRestaurantsCubit>().pollNearbyRestaurants(
+        _nearbyStoresParams(),
+      );
     });
   }
 
@@ -461,7 +468,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             getCategory: (r) => _formatDistance(r.distanceKm),
             getId: (r) => (r.id ?? "").toString(),
             getB2bUnitId: (r) => r.b2bUnitId,
-            getActive: (r) => (r.active ?? true) && _isWithinStoreServiceHours(),
+            getActive:
+                (r) => (r.active ?? true) && _isWithinStoreServiceHours(),
           );
         } else {
           return const Center(child: Text("Failed loading restaurants"));
@@ -496,7 +504,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             getCategory: (store) => _formatDistance(store.distanceKm),
             getId: (store) => (store.id ?? "").toString(),
             getB2bUnitId: (store) => store.b2bUnitId,
-            getActive: (store) => (store.active ?? true) && _isWithinStoreServiceHours(),
+            getActive:
+                (store) =>
+                    (store.active ?? true) && _isWithinStoreServiceHours(),
           );
         } else if (state is GetRestaurantsByProductNameFailure) {
           return Center(child: Text(state.error));
@@ -604,156 +614,145 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColor.White,
+      backgroundColor: const Color(0xFFF7F7F7),
       body: RefreshIndicator(
         onRefresh: _refreshRestaurants,
         child: CustomScrollView(
           controller: _scrollController,
           slivers: [
-            // 🔻 Collapsible AppBar
-            SliverAppBar(
-              automaticallyImplyLeading: false,
-              expandedHeight: 180,
-              pinned: false,
-              floating: false,
-              backgroundColor: AppColor.PrimaryColor,
-              flexibleSpace: FlexibleSpaceBar(
-                collapseMode: CollapseMode.parallax,
-                background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFFF6B00), Color(0xFFFF1E00)],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
+            SliverToBoxAdapter(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
                   ),
-                  child: SafeArea(
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 🔙 Top Row
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                          child: Row(
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'Restaurants',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {},
+                              child: Text(
+                                'Filter',
+                                style: TextStyle(
+                                  color: AppColor.PrimaryColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        CategorySearchBar(
+                          focusNode: _searchFocusNode,
+                          hintText: "Search for restaurants or food",
+                          onChanged: (query) async {
+                            if (_isOutOfServiceArea) return;
+
+                            setState(() => searchQuery = query);
+
+                            if (query.trim().isEmpty) return;
+
+                            final prefs = await SharedPreferences.getInstance();
+
+                            final lat =
+                                prefs.getDouble('saved_latitude') ?? 17.385044;
+                            final lon =
+                                prefs.getDouble('saved_longitude') ?? 78.486671;
+
+                            context
+                                .read<GetRestaurantsByProductNameCubit>()
+                                .fetchRestaurantsByProductName({
+                                  "productName": query,
+                                  "latitude": lat,
+                                  "longitude": lon,
+                                  "radius": 5,
+                                  "page": 0,
+                                  "size": 10,
+                                });
+                          },
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        Container(
+                          width: double.infinity,
+                          height: 155,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFF6B00), Color(0xFFFF2D00)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                          child: const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_back_ios,
-                                  color: Colors.white,
+                              Text(
+                                "LOCAL BASKET",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
                                 ),
-                                onPressed:
-                                    () => Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder:
-                                            (context) => const MainDashboard(),
-                                      ),
-                                      (route) => false,
-                                    ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child:
-                                    (isLocationInitializing ||
-                                            latitude == null ||
-                                            longitude == null)
-                                        ? Shimmer.fromColors(
-                                          baseColor: Colors.grey.shade300,
-                                          highlightColor: Colors.grey.shade100,
-                                          child: Container(
-                                            height: 20,
-                                            width: 200,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                        : LocationHeader(
-                                          key: ValueKey('$latitude$longitude'),
-                                          latitude: latitude,
-                                          longitude: longitude,
-                                          onLocationChanged: _onLocationChanged,
-                                        ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.person,
+                              SizedBox(height: 7),
+                              Text(
+                                "Good food.\nRight around you.",
+                                style: TextStyle(
                                   color: Colors.white,
-                                  size: 26,
+                                  fontSize: 26,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w800,
                                 ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ProfileScreen(),
-                                    ),
-                                  );
-                                },
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                "Discover restaurants near you",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
                         ),
-
-                        // 🔍 Search Bar
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                          child: CategorySearchBar(
-                            focusNode: _searchFocusNode,
-                            hintText: "Search restaurants",
-                            onChanged: (query) async {
-                              if (_isOutOfServiceArea) return;
-                              setState(() => searchQuery = query);
-                              final prefs =
-                                  await SharedPreferences.getInstance();
-                              final lat =
-                                  prefs.getDouble('saved_latitude') ??
-                                  17.385044;
-                              final lon =
-                                  prefs.getDouble('saved_longitude') ??
-                                  78.486671;
-                              final params = {
-                                "productName": query,
-                                "latitude": lat,
-                                "longitude": lon,
-                                "radius": 5,
-                                "page": 0,
-                                "size": 10,
-                              };
-                              context
-                                  .read<GetRestaurantsByProductNameCubit>()
-                                  .fetchRestaurantsByProductName(params);
-                            },
-                          ),
-                        ),
-                        // if (!_isOutOfServiceArea)
-                        //   Padding(
-                        //     padding: const EdgeInsets.symmetric(horizontal: 16),
-                        //     child: FoodCategoryIcons(
-                        //       onCategoryTap: (label) async {
-                        //         setState(() => searchQuery = label);
-                        //         // Clear cache when searching to get fresh results
-                        //         await _clearCache();
-                        //         final prefs =
-                        //             await SharedPreferences.getInstance();
-                        //         final lat =
-                        //             prefs.getDouble('saved_latitude') ??
-                        //             17.385044;
-                        //         final lon =
-                        //             prefs.getDouble('saved_longitude') ??
-                        //             78.486671;
-                        //         final params = {
-                        //           "productName": label,
-                        //           "latitude": lat,
-                        //           "longitude": lon,
-                        //           "radius": 5,
-                        //           "page": 0,
-                        //           "size": 10,
-                        //         };
-                        //         context
-                        //             .read<GetRestaurantsByProductNameCubit>()
-                        //             .fetchRestaurantsByProductName(params);
-                        //       },
-                        //     ),
-                        //   ),
-                        // const SizedBox(height: 10),
                       ],
                     ),
                   ),
@@ -761,83 +760,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // 🧾 Scrollable Content
             if (_isOutOfServiceArea)
               _buildOutOfServiceWidget()
             else
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                  child: Row(
                     children: [
-                      const SizedBox(height: 20),
                       Text(
-                        "Restaurants to Explore",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: AppColor.Black,
+                        searchQuery.trim().isEmpty
+                            ? "Restaurants near you"
+                            : "Search results",
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      searchQuery.isEmpty
-                          ? _buildNearbyRestaurants()
-                          : _buildSearchResults(),
-                      const SizedBox(height: 120),
+                      const Spacer(),
+                      Text(
+                        "See all",
+                        style: TextStyle(
+                          color: AppColor.PrimaryColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
 
-            // ✅ Spacer for Bottom Cart
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            if (!_isOutOfServiceArea)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child:
+                      searchQuery.trim().isEmpty
+                          ? _buildNearbyRestaurants()
+                          : _buildSearchResults(),
+                ),
+              ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
           ],
         ),
       ),
-      bottomNavigationBar:
-          (cartList.isNotEmpty && (cartData?.totalCount ?? 0) > 0)
-              ? BottomCartCard(
-                itemCount: cartData?.totalCount ?? 0,
-                onDeletePressed: () {
-                  showDialog(
-                    context: context,
-                    builder:
-                        (context) => ClearCartDialog(
-                          onClear: () async => await _clearCart(),
-                        ),
-                  );
-                },
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => CartScreen(
-                            cartItems:
-                                cartList
-                                    .map(
-                                      (cartItem) => {
-                                        'cartItemId': cartItem.id,
-                                        'productId': cartItem.productId,
-                                        'quantity': cartItem.quantity ?? 0,
-                                        'price': cartItem.price ?? 0,
-                                        'name': cartItem.productName ?? '',
-                                        'media':
-                                            cartItem.media.isNotEmpty
-                                                ? cartItem.media[0].url
-                                                : null,
-                                      },
-                                    )
-                                    .toList(),
-                          ),
-                    ),
-                  );
-                  if (!mounted) return;
-                  await _fetchCart();
-                },
-              )
-              : null,
     );
   }
 

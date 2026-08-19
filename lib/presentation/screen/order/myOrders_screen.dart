@@ -31,6 +31,7 @@ class _MyOrdersState extends State<MyOrders> {
   final Set<int> _pagesInFlight = <int>{};
   final Set<int> _loadedPages = <int>{};
   final String _currentSearchQuery = '';
+  int _selectedOrderTab = 0;
 
   @override
   void initState() {
@@ -188,6 +189,7 @@ class _MyOrdersState extends State<MyOrders> {
         child: Column(
           children: [
             const SizedBox(height: 10),
+            _buildOrderTabs(),
             Expanded(
               child: BlocConsumer<OrderHistoryCubit, OrderHistoryState>(
                 listener: (context, state) {
@@ -198,6 +200,8 @@ class _MyOrdersState extends State<MyOrders> {
                   }
                 },
                 builder: (context, state) {
+                  final visibleOrders = _visibleOrders;
+
                   if (_isInitialLoading && _allOrders.isEmpty) {
                     return _buildShimmerList();
                   }
@@ -214,7 +218,7 @@ class _MyOrdersState extends State<MyOrders> {
                     );
                   }
 
-                  if (_allOrders.isEmpty) {
+                  if (visibleOrders.isEmpty) {
                     return const Center(
                       child: Text(
                         "No orders found",
@@ -232,15 +236,15 @@ class _MyOrdersState extends State<MyOrders> {
                         vertical: 10,
                       ),
                       itemCount:
-                          _allOrders.length +
+                          visibleOrders.length +
                           (_isLoadingMore ? 1 : 0) +
-                          (!_hasMoreItems && _allOrders.isNotEmpty ? 1 : 0),
+                          (!_hasMoreItems && visibleOrders.isNotEmpty ? 1 : 0),
                       itemBuilder: (context, index) {
-                        if (index < _allOrders.length) {
-                          return _buildPremiumOrderCard(_allOrders[index]);
+                        if (index < visibleOrders.length) {
+                          return _buildPremiumOrderCard(visibleOrders[index]);
                         }
 
-                        if (_isLoadingMore && index == _allOrders.length) {
+                        if (_isLoadingMore && index == visibleOrders.length) {
                           return const Padding(
                             padding: EdgeInsets.all(12),
                             child: CupertinoActivityIndicator(),
@@ -266,6 +270,72 @@ class _MyOrdersState extends State<MyOrders> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  List<Content> get _visibleOrders {
+    return _allOrders.where((order) {
+      final status = _effectiveStatus(order);
+      return _selectedOrderTab == 0
+          ? _isActiveStatus(status)
+          : !_isActiveStatus(status);
+    }).toList();
+  }
+
+  bool _isActiveStatus(String status) {
+    switch (status.toUpperCase()) {
+      case 'DELIVERED':
+      case 'COMPLETED':
+      case 'CANCELLED':
+      case 'CANCELED':
+      case 'REJECTED':
+      case 'FAILED':
+      case 'PAYMENT FAILED':
+        return false;
+      default:
+        return true;
+    }
+  }
+
+  Widget _buildOrderTabs() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(child: _buildOrderTab('Active', 0)),
+          Expanded(child: _buildOrderTab('History', 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderTab(String label, int index) {
+    final selected = _selectedOrderTab == index;
+    return GestureDetector(
+      onTap: () {
+        if (_selectedOrderTab == index) return;
+        setState(() => _selectedOrderTab = index);
+      },
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 11),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? AppColor.PrimaryColor : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected ? AppColor.PrimaryColor : Colors.grey.shade600,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -628,8 +698,7 @@ class _MyOrdersState extends State<MyOrders> {
 
   Widget _buildMiniTracker(String status) {
     String normalized = status.toUpperCase();
-    if (normalized == "CREATED" ||
-        normalized == "PENDING") {
+    if (normalized == "CREATED" || normalized == "PENDING") {
       normalized = "PLACED";
     } else if (normalized == "COMPLETED") {
       normalized = "DELIVERED";

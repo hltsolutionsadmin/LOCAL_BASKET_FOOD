@@ -29,7 +29,7 @@ class GetNearByRestaurantsRemoteDataSourceImpl
       final int size = params['size'] ?? 20;
 
       final url =
-          '$baseUrl2${getNearbyRestaurantsUrl(latitude, longitude, radius, page, size)}';
+          '$baseUrl2${getNearbyRestaurantsUrl(latitude, longitude, radius, page, size) + "\getNearbyRestaurantsUrl(latitude, longitude, radius, page, size)b2bUnitId=" + defaultB2bUnitId}';
 
       final response = await client.request(
         url,
