@@ -212,14 +212,14 @@ class _MainDashboardState extends State<MainDashboard> {
                   onTap: _openFoodDashboard,
                 ),
                 _QuickCategory(
-                  icon: Icons.flash_on,
-                  title: 'Instant\nDelivery',
-                  onTap: _openFoodDashboard,
+                  icon: Icons.star_outline_rounded,
+                  title: 'Special\nZone',
+                  onTap: () => _openCategoryTab('Special Zone'),
                 ),
                 _QuickCategory(
-                  icon: Icons.storefront,
-                  title: 'Dine &\nPick Up',
-                  onTap: _openFoodDashboard,
+                  icon: Icons.set_meal_outlined,
+                  title: 'Fresh\nMeat',
+                  onTap: () => _openCategoryTab('Fresh Meat'),
                 ),
               ],
             ),
@@ -330,6 +330,13 @@ class _MainDashboardState extends State<MainDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const DashboardScreen()),
+    );
+  }
+
+  void _openCategoryTab(String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => _UnderDevelopmentScreen(title: title)),
     );
   }
 
