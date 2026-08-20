@@ -1,4 +1,4 @@
-import 'package:local_basket/components/custom_button.dart' as local_basket_button;
+import 'package:local_basket/core/constants/colors.dart';
 import 'package:flutter/material.dart';
 
 class CheckoutBottomBar extends StatelessWidget {
@@ -24,39 +24,15 @@ class CheckoutBottomBar extends StatelessWidget {
     this.codAvailable = false,
   });
 
-  Widget buildPriceRow(String label, double value, {bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
-              fontWeight: isTotal ? FontWeight.w700 : FontWeight.w500,
-              color: isTotal ? Colors.black : Colors.grey.shade700,
-            ),
-          ),
-          Text(
-            "₹${value.toStringAsFixed(2)}",
-            style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
-              fontWeight: isTotal ? FontWeight.w700 : FontWeight.w600,
-              color: isTotal ? Colors.black : Colors.grey.shade800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final buttonText =
+        codAvailable ? "Proceed to Checkout" : "Proceed to Checkout";
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.98),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         boxShadow: const [
           BoxShadow(
             color: Colors.black12,
@@ -65,54 +41,96 @@ class CheckoutBottomBar extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7F8FA),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  )
-                ],
+        child: Container(
+          height: 64,
+          padding: const EdgeInsets.only(left: 16, right: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColor.PrimaryColor.withValues(alpha: 0.24),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  buildPriceRow("Subtotal", subtotal),
-                  buildPriceRow("Delivery Charge", deliveryCharge),
-                  const Divider(height: 24, thickness: 1),
-                  buildPriceRow("Total", total, isTotal: true),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: codAvailable
-                  ? local_basket_button.CustomButton(
-                      buttonText: "Confirm Order (Cash on Delivery)",
-                      onPressed: onCodOrder,
-                      isLoading: loading,
-                    )
-                  : local_basket_button.CustomButton(
-                      buttonText: "Place Order",
-                      onPressed: onPlaceOrder,
-                      isLoading: loading,
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "To Pay",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-            ),
-          ],
+                    Text(
+                      "₹${total.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed:
+                      loading
+                          ? null
+                          : (codAvailable ? onCodOrder : onPlaceOrder),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColor.PrimaryColor,
+                    disabledBackgroundColor: AppColor.PrimaryColor.withValues(
+                      alpha: 0.65,
+                    ),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child:
+                      loading
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                buttonText,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Icon(Icons.arrow_forward_rounded, size: 20),
+                            ],
+                          ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -19,7 +19,6 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_basket/core/constants/colors.dart';
 import 'package:local_basket/components/custom_snackbar.dart';
-import 'package:local_basket/components/custom_topbar.dart';
 import 'package:local_basket/presentation/cubit/cart/getCart/getCart_cubit.dart';
 import 'package:local_basket/presentation/cubit/cart/getCart/getCart_state.dart';
 import 'package:local_basket/presentation/cubit/address/getAddress/getAddress_cubit.dart';
@@ -34,6 +33,7 @@ import 'package:local_basket/presentation/screen/order/orderSuccess_screen.dart'
 import 'package:local_basket/core/constants/api_constants.dart';
 import 'package:local_basket/core/constants/global_exception_handler.dart';
 import 'package:local_basket/core/utils/address_formatter.dart';
+import 'package:local_basket/presentation/cubit/cart/clearCart/clearCart_cubit.dart';
 
 class CartScreen extends StatefulWidget {
   final int? orderId;
@@ -902,6 +902,242 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  PreferredSizeWidget _buildCartAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(64),
+      child: SafeArea(
+        bottom: false,
+        child: Container(
+          height: 64,
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                color: const Color(0xFF242424),
+                onPressed: _popWithCartResult,
+              ),
+              Expanded(
+                child: Text(
+                  "Cart",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF202020),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: selectedItems.isEmpty ? null : _clearCart,
+                child: Text(
+                  "Clear",
+                  style: TextStyle(
+                    color:
+                        selectedItems.isEmpty
+                            ? Colors.transparent
+                            : AppColor.PrimaryColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _popWithCartResult() {
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('is_offer_flow');
+      await prefs.remove('offer_id');
+      await prefs.remove('offer_coupon');
+      await prefs.remove('offer_started_at');
+    }();
+
+    final updatedCart = <dynamic, int>{};
+    for (var item in selectedItems) {
+      final productId = item['productId'] ?? item['id'];
+      final qty = cart[item['name']] ?? 0;
+      if (qty > 0) updatedCart[productId] = qty;
+    }
+
+    Navigator.pop(context, {
+      'updatedCart': updatedCart,
+      'cartItemsLength': getCartItemCount(),
+    });
+
+    widget.onBottomSheetVisibilityChanged?.call(cart.isNotEmpty);
+  }
+
+  Future<void> _clearCart() async {
+    final activeCartId = await _ensureCartId();
+    if (!mounted || !_hasValidCartId(activeCartId)) return;
+
+    await context.read<ClearCartCubit>().clearCart(
+      context,
+      cartId: activeCartId,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      cart.clear();
+      selectedItems.clear();
+      _subtotal = 0;
+      _deliveryCharge = 0;
+      _grandTotal = 0;
+      _selectedPromoCode = null;
+      _eligiblePromotions = [];
+    });
+    await context.read<GetCartCubit>().fetchCart(context);
+    widget.onBottomSheetVisibilityChanged?.call(false);
+  }
+
+  Widget _buildNotesCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: InkWell(
+        onTap: () async {
+          final newNote = await showDialog<String>(
+            context: context,
+            builder:
+                (context) => AlertDialog(
+                  title: const Text("Add cooking instructions"),
+                  content: TextField(
+                    controller: notesController,
+                    decoration: const InputDecoration(
+                      hintText: "E.g. No onions, please",
+                    ),
+                    maxLines: 3,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel"),
+                    ),
+                    TextButton(
+                      onPressed:
+                          () => Navigator.pop(
+                            context,
+                            notesController.text.trim(),
+                          ),
+                      child: const Text("OK"),
+                    ),
+                  ],
+                ),
+          );
+          if (newNote != null) {
+            setState(() => notesController.text = newNote);
+          }
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFEDEDED)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.edit_note_rounded, color: AppColor.PrimaryColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  notesController.text.isEmpty
+                      ? "Add cooking instructions"
+                      : notesController.text,
+                  style: TextStyle(
+                    color:
+                        notesController.text.isEmpty
+                            ? Colors.grey.shade500
+                            : Colors.black87,
+                    fontSize: 13,
+                    fontStyle:
+                        notesController.text.isEmpty
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBillDetailsCard({
+    required double subtotal,
+    required double deliveryCharge,
+    required double total,
+  }) {
+    Widget row(String label, String value, {bool isTotal = false}) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isTotal ? Colors.black : Colors.grey.shade700,
+                  fontSize: isTotal ? 15 : 14,
+                  fontWeight: isTotal ? FontWeight.w800 : FontWeight.w500,
+                ),
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: isTotal ? 16 : 14,
+                fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Bill details",
+            style: TextStyle(
+              color: Color(0xFF202020),
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFEDEDED)),
+            ),
+            child: Column(
+              children: [
+                row("Item total", "₹${subtotal.toStringAsFixed(0)}"),
+                row("Delivery fee", "₹${deliveryCharge.toStringAsFixed(0)}"),
+                const Divider(height: 22),
+                row("To Pay", "₹${total.toStringAsFixed(0)}", isTotal: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
@@ -1087,54 +1323,24 @@ class _CartScreenState extends State<CartScreen> {
       ],
       child: WillPopScope(
         onWillPop: () async {
-          () async {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.remove('is_offer_flow');
-            await prefs.remove('offer_id');
-            await prefs.remove('offer_coupon');
-            await prefs.remove('offer_started_at');
-          }();
-
-          final updatedCart = <dynamic, int>{};
-          for (var item in selectedItems) {
-            final productId = item['productId'] ?? item['id'];
-            final qty = cart[item['name']] ?? 0;
-            if (qty > 0) updatedCart[productId] = qty;
-          }
-
-          Navigator.pop(context, {
-            'updatedCart': updatedCart,
-            'cartItemsLength': getCartItemCount(),
-          });
+          _popWithCartResult();
           return false;
         },
         child: Scaffold(
-          backgroundColor: AppColor.White,
-          appBar: CustomAppBar(
-            title: "Cart (${getCartItemCount()} items)",
-            onBackPressed: () {
-              () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('is_offer_flow');
-                await prefs.remove('offer_id');
-                await prefs.remove('offer_coupon');
-                await prefs.remove('offer_started_at');
-              }();
-              final updatedCart = <dynamic, int>{};
-              for (var item in selectedItems) {
-                final productId = item['productId'] ?? item['id'];
-                final qty = cart[item['name']] ?? 0;
-                if (qty > 0) updatedCart[productId] = qty;
-              }
-
-              Navigator.pop(context, {
-                'updatedCart': updatedCart,
-                'cartItemsLength': getCartItemCount(),
-              });
-
-              widget.onBottomSheetVisibilityChanged?.call(cart.isNotEmpty);
-            },
-          ),
+          backgroundColor: const Color(0xFFFFFCFA),
+          appBar: _buildCartAppBar(),
+          bottomNavigationBar:
+              selectedItems.isEmpty
+                  ? null
+                  : CheckoutBottomBar(
+                    subtotal: _isCouponApplied ? 0 : _subtotal,
+                    deliveryCharge: _isCouponApplied ? 0 : _deliveryCharge,
+                    total: _isCouponApplied ? 1.0 : _grandTotal,
+                    loading: loading,
+                    codAvailable: _isCouponApplied || _hasEligiblePromotions,
+                    onPlaceOrder: openCheckOut,
+                    onCodOrder: openCodCheckout,
+                  ),
           body: AbsorbPointer(
             // Only ever true while a payment operation (checkout/initiate,
             // COD, or verify-payment) is in flight, so this doesn't block
@@ -1162,85 +1368,7 @@ class _CartScreenState extends State<CartScreen> {
                     }
                   },
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: InkWell(
-                    onTap: () async {
-                      final newNote = await showDialog<String>(
-                        context: context,
-                        builder:
-                            (context) => AlertDialog(
-                              title: const Text("📝 Add Notes"),
-                              content: TextField(
-                                controller: notesController,
-                                decoration: const InputDecoration(
-                                  hintText: "e.g. Deliver between 5–6 PM",
-                                ),
-                                maxLines: 3,
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text("Cancel"),
-                                ),
-                                TextButton(
-                                  onPressed:
-                                      () => Navigator.pop(
-                                        context,
-                                        notesController.text.trim(),
-                                      ),
-                                  child: const Text("OK"),
-                                ),
-                              ],
-                            ),
-                      );
-                      if (newNote != null) {
-                        setState(() => notesController.text = newNote);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.notes_rounded, color: Colors.orange),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              notesController.text.isEmpty
-                                  ? "Add notes"
-                                  : notesController.text,
-                              style: TextStyle(
-                                color:
-                                    notesController.text.isEmpty
-                                        ? Colors.grey
-                                        : Colors.black,
-                                fontStyle:
-                                    notesController.text.isEmpty
-                                        ? FontStyle.italic
-                                        : FontStyle.normal,
-                              ),
-                            ),
-                          ),
-                          const Icon(Icons.edit, size: 18, color: Colors.grey),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                if (selectedItems.isNotEmpty) _buildNotesCard(),
                 if (selectedItems.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
@@ -1248,7 +1376,8 @@ class _CartScreenState extends State<CartScreen> {
                       promoCodes: _eligiblePromotions,
                       loading: _promotionsLoading,
                       selectedPromoCode: _selectedPromoCode,
-                      onChanged: (code) => setState(() => _selectedPromoCode = code),
+                      onChanged:
+                          (code) => setState(() => _selectedPromoCode = code),
                     ),
                   ),
                 Expanded(
@@ -1298,89 +1427,142 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             ),
                           )
-                          : ListView.builder(
-                            itemCount: selectedItems.length + 1,
-                            itemBuilder: (ctx, i) {
-                              if (i < selectedItems.length) {
-                                final item = selectedItems[i];
-                                final currentQuantity = cart[item['name']] ?? 1;
-                                return CartItemCard(
-                                  item: item,
-                                  quantity: currentQuantity,
-                                  enableIncrement:
-                                      widget.orderId == null &&
-                                      !_isCouponApplied,
-                                  onQuantityChanged: (q) async {
-                                    final name = item['name'];
-                                    if (name == null) return;
-
-                                    if (q == currentQuantity) return;
-
-                                    if (q <= 0) {
-                                      setState(() {
-                                        cart.remove(name);
-                                        selectedItems.removeAt(i);
-                                      });
-                                    } else {
-                                      setState(() {
-                                        cart[name] = q;
-                                      });
-                                    }
-
-                                    final activeCartId = await _ensureCartId();
-                                    if (!_hasValidCartId(activeCartId)) return;
-
-                                    if (currentQuantity <= 0 && q > 0) {
-                                      final payload = _singleItemCartPayload(
-                                        item,
-                                        1,
-                                      );
-                                      if (payload == null) return;
-                                      await context
-                                          .read<ProductsAddToCartCubit>()
-                                          .addToCart(
-                                            activeCartId,
-                                            payload,
-                                            context: context,
-                                          );
-                                    } else {
-                                      await _updateExistingCartItemQuantity(
-                                        activeCartId!,
-                                        item,
-                                        q,
-                                      );
-                                    }
-                                    await context
-                                        .read<GetCartCubit>()
-                                        .fetchCart(context);
-                                    _refreshCheckout();
-
-                                    widget.onBottomSheetVisibilityChanged?.call(
-                                      cart.isNotEmpty,
-                                    );
-                                  },
-                                );
-                              }
-
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 20,
-                                  horizontal: 16,
+                          : ListView(
+                            padding: EdgeInsets.zero,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  2,
+                                  16,
+                                  12,
                                 ),
-                                child: CheckoutBottomBar(
-                                  subtotal: _isCouponApplied ? 0 : _subtotal,
-                                  deliveryCharge:
-                                      _isCouponApplied ? 0 : _deliveryCharge,
-                                  total: _isCouponApplied ? 1.0 : _grandTotal,
-                                  loading: loading,
-                                  codAvailable:
-                                      _isCouponApplied ||
-                                      _hasEligiblePromotions,
-                                  onPlaceOrder: openCheckOut,
-                                  onCodOrder: openCodCheckout,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "FROM LOCAL BASKET",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: .3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: const Color(0xFFEDEDED),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          for (
+                                            var i = 0;
+                                            i < selectedItems.length;
+                                            i++
+                                          )
+                                            CartItemCard(
+                                              item: selectedItems[i],
+                                              quantity:
+                                                  cart[selectedItems[i]['name']] ??
+                                                  1,
+                                              enableIncrement:
+                                                  widget.orderId == null &&
+                                                  !_isCouponApplied,
+                                              onQuantityChanged: (q) async {
+                                                final item = selectedItems[i];
+                                                final itemContext = context;
+                                                final productsCubit =
+                                                    itemContext
+                                                        .read<
+                                                          ProductsAddToCartCubit
+                                                        >();
+                                                final getCartCubit =
+                                                    itemContext
+                                                        .read<GetCartCubit>();
+                                                final name = item['name'];
+                                                final currentQuantity =
+                                                    cart[name] ?? 1;
+                                                if (name == null ||
+                                                    q == currentQuantity) {
+                                                  return;
+                                                }
+
+                                                if (q <= 0) {
+                                                  setState(() {
+                                                    cart.remove(name);
+                                                    selectedItems.removeAt(i);
+                                                  });
+                                                } else {
+                                                  setState(() {
+                                                    cart[name] = q;
+                                                  });
+                                                }
+
+                                                final activeCartId =
+                                                    await _ensureCartId();
+                                                if (!itemContext.mounted) {
+                                                  return;
+                                                }
+                                                if (!_hasValidCartId(
+                                                  activeCartId,
+                                                )) {
+                                                  return;
+                                                }
+
+                                                if (currentQuantity <= 0 &&
+                                                    q > 0) {
+                                                  final payload =
+                                                      _singleItemCartPayload(
+                                                        item,
+                                                        1,
+                                                      );
+                                                  if (payload == null) return;
+                                                  await productsCubit.addToCart(
+                                                    activeCartId,
+                                                    payload,
+                                                    context: itemContext,
+                                                  );
+                                                } else {
+                                                  await _updateExistingCartItemQuantity(
+                                                    activeCartId!,
+                                                    item,
+                                                    q,
+                                                  );
+                                                }
+                                                if (!itemContext.mounted) {
+                                                  return;
+                                                }
+                                                await getCartCubit.fetchCart(
+                                                  itemContext,
+                                                );
+                                                _refreshCheckout();
+
+                                                widget
+                                                    .onBottomSheetVisibilityChanged
+                                                    ?.call(cart.isNotEmpty);
+                                              },
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
+                              ),
+                              _buildBillDetailsCard(
+                                subtotal: _isCouponApplied ? 0 : _subtotal,
+                                deliveryCharge:
+                                    _isCouponApplied ? 0 : _deliveryCharge,
+                                total: _isCouponApplied ? 1.0 : _grandTotal,
+                              ),
+                            ],
                           ),
                 ),
               ],
