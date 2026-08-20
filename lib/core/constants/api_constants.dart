@@ -6,7 +6,7 @@ const TriggerOtp = '/auth/otp/send';
 const SigninUrl = '/auth/otp/login';
 const userDetails = '/api/users/me';
 const fcmTokenUrl = '/api/users/me/fcm-token';
-const updateCurrentCustomerUrl = '/usermgmt/user/userDetails';
+const updateCurrentCustomerUrl = '/api/users/me';
 const deleteAccountUrl = '/usermgmt/user/skillrat';
 
 const rolePostUrl = '/user/user';

@@ -308,16 +308,17 @@ class _OffersCarouselState extends State<OffersCarousel> {
           return Transform.scale(
             scale: scale,
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
+              margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
                 image: DecorationImage(
                   image:
                       isNetwork
                           ? NetworkImage(image)
                           : AssetImage(image) as ImageProvider,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.fill,
                 ),
               ),
               child: Material(

@@ -80,7 +80,7 @@ class GetNearbyRestaurantsCubit extends Cubit<GetNearbyRestaurantsState> {
         keyParts.add('$key=$value');
       }
     });
-    return 'nearby_restaurants_${keyParts.join('_')}';
+    return 'nearby_restaurants_v2_${keyParts.join('_')}';
   }
 
   /// Force refresh restaurants data

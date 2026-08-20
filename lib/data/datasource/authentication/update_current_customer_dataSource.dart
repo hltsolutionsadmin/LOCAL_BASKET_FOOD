@@ -22,24 +22,26 @@ class UpdateCurrentCustomerRemoteDataSourceImpl
     try {
       print(payload['fcmToken']);
 
-      FormData formData = FormData.fromMap({
+      final data = {
         "fullName": payload['fullName'],
+        "firstName": payload['firstName'],
+        "lastName": payload['lastName'],
         "email": payload['email'],
-        "fcmToken": payload['fcmToken'],
+        "fcmToken": payload['fcmToken'] ?? '',
         "eato": payload['eato'],
-      });
-      print(formData);
+      };
+      print(data);
       final response = await client.put(
         '$baseUrl$updateCurrentCustomerUrl',
-        data: formData,
+        data: data,
         options: Options(
           headers: {
-            'Content-Type': 'multipart/form-data',
+            'Content-Type': 'application/json',
           },
         ),
       );
 
-      print('Response: ${response.data}');
+      print('Update customer response (${response.statusCode}): ${response.data}');
 
       if (response.statusCode == 200) {
         return UpdateCurrentCustomerModel.fromJson(response.data);

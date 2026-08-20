@@ -28,8 +28,8 @@ import 'package:local_basket/components/searchBar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
-const double ANAKAPALLI_LATITUDE = 17.6869;
-const double ANAKAPALLI_LONGITUDE = 82.8580;
+const double ANAKAPALLI_LATITUDE = 17.68897;
+const double ANAKAPALLI_LONGITUDE = 83.003476;
 const double SERVICE_RADIUS_KM = 40.0;
 
 class LocationValidator {

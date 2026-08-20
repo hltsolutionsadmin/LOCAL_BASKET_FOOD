@@ -35,27 +35,51 @@ class _OffersScreenState extends State<OffersScreen> {
 
           final bool isLoading = promotionsState is PromotionsLoading;
 
-          if (promotions.isEmpty) {
-            if (isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return const _EmptyOffers();
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: promotions.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final promo = promotions[index];
-              return _OfferCard(
-                name: promo.name ?? 'Offer',
-                description: promo.description ?? '',
-                couponCode: promo.code ?? '',
-              );
-            },
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              const Text(
+                'Featured offers',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              ..._featuredOfferImages.map(_buildImageOffer),
+              if (isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ...promotions.map(
+                (promo) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _OfferCard(
+                    name: promo.name ?? 'Offer',
+                    description: promo.description ?? '',
+                    couponCode: promo.code ?? '',
+                  ),
+                ),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  static const _featuredOfferImages = ['assets/images/jpg/promotion1.jpeg'];
+
+  Widget _buildImageOffer(String imagePath) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AspectRatio(
+        aspectRatio: 1448 / 1086,
+        child: SizedBox(
+          width: double.infinity,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(imagePath, fit: BoxFit.fill),
+          ),
+        ),
       ),
     );
   }
@@ -167,38 +191,6 @@ class _OfferCard extends StatelessWidget {
                 ],
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyOffers extends StatelessWidget {
-  const _EmptyOffers();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.local_offer_outlined,
-            size: 56,
-            color: Colors.grey.shade400,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "No offers available right now",
-            style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              context.read<PromotionsCubit>().fetchPromotions();
-            },
-            child: const Text("Retry"),
           ),
         ],
       ),

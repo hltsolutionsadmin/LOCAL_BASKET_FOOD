@@ -16,6 +16,7 @@ import 'package:local_basket/presentation/screen/address/address_screen.dart';
 import 'package:local_basket/presentation/screen/order/myOrders_screen.dart';
 import 'package:local_basket/presentation/screen/profile/faqs_screen.dart';
 import 'package:local_basket/presentation/screen/profile/offers_screen.dart';
+import 'package:local_basket/presentation/screen/profile/pool_screen.dart';
 import 'package:local_basket/presentation/screen/profile/terms&conditions_screen.dart';
 import 'package:local_basket/presentation/screen/profile/privacy_policy_screen.dart';
 import 'package:local_basket/presentation/screen/widgets/logout.dart';
@@ -162,36 +163,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         },
       ),
       _Option(
-        Icons.credit_card_outlined,
-        "Payment Methods",
-        onTap: () => _showComingSoon(context, 'Payment methods'),
-      ),
-      _Option(
-        Icons.workspace_premium_outlined,
-        "LB One",
-        trailing: const Text(
-          'Member',
-          style: TextStyle(color: Colors.orange, fontSize: 11),
-        ),
-        onTap: () => _showComingSoon(context, 'LB One'),
-      ),
-      _Option(
-        Icons.account_balance_wallet_outlined,
-        "LB Money",
-        trailing: const Text(
-          '₹200',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
-        ),
-        onTap: () => _showComingSoon(context, 'LB Money'),
-      ),
-      _Option(
-        Icons.card_giftcard_outlined,
-        "Refer & Earn",
-        trailing: const Text(
-          'Earn ₹200',
-          style: TextStyle(color: Colors.grey, fontSize: 11),
-        ),
-        onTap: () => _showComingSoon(context, 'Refer & Earn'),
+        Icons.groups_outlined,
+        "Pool",
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PoolScreen()),
+          );
+        },
       ),
       _Option(
         Icons.help_outline,
@@ -304,20 +283,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (!mounted || name == null) return;
-    await context.read<UpdateCurrentCustomerCubit>().updateCustomer({
+    final nameParts = name.split(RegExp(r'\s+'));
+    final firstName = nameParts.first;
+    final lastName = nameParts.length > 1
+        ? nameParts.skip(1).join(' ')
+        : '';
+    final updated = await context.read<UpdateCurrentCustomerCubit>().updateCustomer({
       'fullName': name,
+      'firstName': firstName,
+      'lastName': lastName,
       'email': customer.email ?? '',
-      'fcmToken': null,
+      'fcmToken': '',
       'eato': true,
     }, context);
-    if (!mounted) return;
+    if (!mounted || !updated) return;
     await context.read<CurrentCustomerCubit>().GetCurrentCustomer(context);
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$feature will be available soon')));
   }
 
   Widget _buildBottomNavigation(BuildContext context) {

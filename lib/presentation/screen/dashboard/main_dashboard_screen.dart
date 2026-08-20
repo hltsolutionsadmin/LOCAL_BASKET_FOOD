@@ -201,7 +201,7 @@ class _MainDashboardState extends State<MainDashboard> {
               ),
             ),
             const SizedBox(height: 14),
-            const OffersCarousel(height: 139),
+            const OffersCarousel(height: 150),
             const SizedBox(height: 18),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -275,10 +275,6 @@ class _MainDashboardState extends State<MainDashboard> {
         selectedFontSize: 11,
         unselectedFontSize: 11,
         onTap: (index) {
-          setState(() {
-            _selectedNavIndex = index;
-          });
-
           switch (index) {
             case 1:
               _openFoodDashboard();
