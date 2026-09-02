@@ -26,8 +26,9 @@ import 'package:latlong2/latlong.dart';
 
 class AddressScreen extends StatefulWidget {
   final Function(Content)? selectedAddress;
+  final Content? addressToEdit;
 
-  const AddressScreen({super.key, this.selectedAddress});
+  const AddressScreen({super.key, this.selectedAddress, this.addressToEdit});
   @override
   State<AddressScreen> createState() => _AddressScreenState();
 }
@@ -45,6 +46,9 @@ class _AddressScreenState extends State<AddressScreen>
   final stateController = TextEditingController();
   final pincodeController = TextEditingController();
 
+  String? _editingAddressId;
+  bool get _isEditing => _editingAddressId != null;
+
   // Serviceable states/cities as returned by the states/cities APIs. State
   // and City are shown as read-only fields defaulted to the (currently
   // single) serviceable state/city; the stateId/cityId sent to the
@@ -60,11 +64,29 @@ class _AddressScreenState extends State<AddressScreen>
   @override
   void initState() {
     super.initState();
+    _editingAddressId = widget.addressToEdit?.id;
     _tabController = TabController(length: 2, vsync: this);
     _fetchAddresses();
     _fetchStates();
     _fetchAllCities();
     _fetchCurrentCustomer();
+    if (widget.addressToEdit != null) {
+      _prefillForm(widget.addressToEdit!);
+    }
+  }
+
+  void _prefillForm(Content address) {
+    final item = address.address;
+    if (item == null) return;
+    houseController.text = item.line1 ?? '';
+    streetController.text = item.fullText ?? '';
+    landmarkController.text = item.line2 ?? '';
+    cityController.text = item.city ?? '';
+    stateController.text = item.state ?? '';
+    pincodeController.text = item.postalCode ?? '';
+    if (_editingAddressId != null) {
+      _isLocationPicked = true;
+    }
   }
 
   @override
@@ -254,8 +276,9 @@ class _AddressScreenState extends State<AddressScreen>
       "stateId": matchedState.id,
       "country": "IN",
       "postalCode": pincodeController.text.trim(),
-      "latitude": _selectedLatLng!.latitude,
-      "longitude": _selectedLatLng!.longitude,
+      "latitude": _selectedLatLng?.latitude,
+      "longitude": _selectedLatLng?.longitude,
+      if (_editingAddressId != null) "id": _editingAddressId,
     };
     context.read<SaveAddressCubit>().saveAddress(payload, context);
   }
@@ -419,9 +442,18 @@ class _AddressScreenState extends State<AddressScreen>
     _applyDefaultPhone();
     _applyDefaultLocation();
     setState(() {
+      _editingAddressId = null;
       _selectedLatLng = null;
       _isLocationPicked = false;
     });
+  }
+
+  void _onEditAddress(Content address) {
+    setState(() {
+      _editingAddressId = address.id;
+    });
+    _prefillForm(address);
+    _tabController.animateTo(1);
   }
 
   @override
@@ -464,9 +496,12 @@ class _AddressScreenState extends State<AddressScreen>
                     CustomSnackbars.showSuccessSnack(
                       context: scaffoldContext,
                       title: "Success",
-                      message: "Address Saved Successfully",
+                      message: _isEditing
+                          ? "Address Updated Successfully"
+                          : "Address Saved Successfully",
                     );
                     _clearForm();
+                    setState(() => _editingAddressId = null);
                     _fetchAddresses();
                     _tabController.animateTo(0);
                   } else if (state is SaveAddressFailure) {
@@ -553,8 +588,10 @@ class _AddressScreenState extends State<AddressScreen>
               children: [
                 SavedAddressesView(
                   onAddNewAddressTap: () {
+                    setState(() => _editingAddressId = null);
                     _tabController.animateTo(1);
                   },
+                  onAddressEditTap: _onEditAddress,
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -565,7 +602,7 @@ class _AddressScreenState extends State<AddressScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Add New Address",
+                          _isEditing ? "Edit Address" : "Add New Address",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -692,8 +729,10 @@ class _AddressScreenState extends State<AddressScreen>
                                               color: Colors.white,
                                             ),
                                           )
-                                          : const Text(
-                                            "Save Address",
+                                          : Text(
+                                            _isEditing
+                                                ? "Update Address"
+                                                : "Save Address",
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w600,
