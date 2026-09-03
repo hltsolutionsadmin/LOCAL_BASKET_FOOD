@@ -25,10 +25,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 
 class AddressScreen extends StatefulWidget {
-  final Function(Content)? selectedAddress;
-  final Content? addressToEdit;
+  final Content? selectedAddress;
 
-  const AddressScreen({super.key, this.selectedAddress, this.addressToEdit});
+  const AddressScreen({super.key, this.selectedAddress});
   @override
   State<AddressScreen> createState() => _AddressScreenState();
 }
@@ -48,7 +47,6 @@ class _AddressScreenState extends State<AddressScreen>
 
   String? _editingAddressId;
   bool get _isEditing => _editingAddressId != null;
-
   // Serviceable states/cities as returned by the states/cities APIs. State
   // and City are shown as read-only fields defaulted to the (currently
   // single) serviceable state/city; the stateId/cityId sent to the
@@ -64,27 +62,62 @@ class _AddressScreenState extends State<AddressScreen>
   @override
   void initState() {
     super.initState();
-    _editingAddressId = widget.addressToEdit?.id;
     _tabController = TabController(length: 2, vsync: this);
+
+    if (widget.selectedAddress != null) {
+      _populateAddressForEdit();
+      _tabController.animateTo(1);
+    }
+
     _fetchAddresses();
     _fetchStates();
     _fetchAllCities();
     _fetchCurrentCustomer();
-    if (widget.addressToEdit != null) {
-      _prefillForm(widget.addressToEdit!);
-    }
   }
 
   void _prefillForm(Content address) {
     final item = address.address;
+
     if (item == null) return;
-    houseController.text = item.line1 ?? '';
-    streetController.text = item.fullText ?? '';
-    landmarkController.text = item.line2 ?? '';
+
+    nameController.text = item.name ?? '';
+
+    final addressMobile = item.mobileNumber?.trim() ?? '';
+
+    if (addressMobile.isNotEmpty) {
+      phoneController.text = addressMobile;
+    } else {
+      _applyDefaultPhone();
+    }
+
+    final hasSeparateAddressFields =
+        (item.line2 ?? '').trim().isNotEmpty ||
+        (item.fullText ?? '').trim().isNotEmpty;
+
+    if (hasSeparateAddressFields) {
+      houseController.text = item.line1 ?? '';
+      landmarkController.text = item.line2 ?? '';
+      streetController.text = item.fullText ?? '';
+    } else {
+      final parts =
+          (item.line1 ?? '')
+              .split(',')
+              .map((part) => part.trim())
+              .where((part) => part.isNotEmpty)
+              .toList();
+
+      houseController.text = parts.isNotEmpty ? parts[0] : '';
+      landmarkController.text = parts.length > 1 ? parts[1] : '';
+      streetController.text =
+          parts.length > 2 ? parts.sublist(2).join(', ') : '';
+    }
+
     cityController.text = item.city ?? '';
     stateController.text = item.state ?? '';
     pincodeController.text = item.postalCode ?? '';
-    if (_editingAddressId != null) {
+
+    if (item.latitude != null && item.longitude != null) {
+      _selectedLatLng = LatLng(item.latitude!, item.longitude!);
       _isLocationPicked = true;
     }
   }
@@ -160,8 +193,9 @@ class _AddressScreenState extends State<AddressScreen>
     if (defaultState == null || _allCities.isEmpty) return;
     if (cityController.text.trim().isEmpty) {
       final stateCode = defaultState.code?.toLowerCase();
-      final candidates =
-          _allCities.where((c) => c.stateCode?.toLowerCase() == stateCode);
+      final candidates = _allCities.where(
+        (c) => c.stateCode?.toLowerCase() == stateCode,
+      );
       final defaultCity =
           candidates.isNotEmpty ? candidates.first : _allCities.first;
       setState(() {
@@ -269,17 +303,33 @@ class _AddressScreenState extends State<AddressScreen>
       landmarkController.text,
       streetController.text,
     ]);
-
-    final payload = {
-      "addressLine1": addressLine1,
-      "cityId": matchedCity.id,
-      "stateId": matchedState.id,
-      "country": "IN",
-      "postalCode": pincodeController.text.trim(),
-      "latitude": _selectedLatLng?.latitude,
-      "longitude": _selectedLatLng?.longitude,
-      if (_editingAddressId != null) "id": _editingAddressId,
-    };
+    final payload =
+        _editingAddressId != null
+            ? {
+              "name": nameController.text.trim(),
+              "mobileNumber": phoneController.text.trim(),
+              "line1": houseController.text.trim(),
+              "line2": landmarkController.text.trim(),
+              "fullText": streetController.text.trim(),
+              "cityId": matchedCity.id,
+              "stateId": matchedState.id,
+              "country": "IN",
+              "postalCode": pincodeController.text.trim(),
+              "latitude": _selectedLatLng!.latitude,
+              "longitude": _selectedLatLng!.longitude,
+              "id": _editingAddressId,
+            }
+            : {
+              "name": nameController.text.trim(),
+              "mobileNumber": phoneController.text.trim(),
+              "addressLine1": addressLine1,
+              "cityId": matchedCity.id,
+              "stateId": matchedState.id,
+              "country": "IN",
+              "postalCode": pincodeController.text.trim(),
+              "latitude": _selectedLatLng!.latitude,
+              "longitude": _selectedLatLng!.longitude,
+            };
     context.read<SaveAddressCubit>().saveAddress(payload, context);
   }
 
@@ -306,10 +356,7 @@ class _AddressScreenState extends State<AddressScreen>
           borderRadius: BorderRadius.circular(10),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: _isLocationPicked ? null : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(10),
@@ -333,10 +380,7 @@ class _AddressScreenState extends State<AddressScreen>
                         : "Select delivery location on map",
                     style: TextStyle(
                       fontSize: 14,
-                      color:
-                          _isLocationPicked
-                              ? null
-                              : Colors.grey.shade600,
+                      color: _isLocationPicked ? null : Colors.grey.shade600,
                     ),
                   ),
                 ),
@@ -437,9 +481,78 @@ class _AddressScreenState extends State<AddressScreen>
     );
   }
 
+  void _populateAddressForEdit() {
+    final selectedAddress = widget.selectedAddress;
+
+    if (selectedAddress == null || selectedAddress.address == null) {
+      return;
+    }
+
+    final address = selectedAddress.address!;
+
+    debugPrint('===== EDIT ADDRESS DEBUG =====');
+    debugPrint('ID: ${address.id}');
+    debugPrint('NAME: ${address.name}');
+    debugPrint('PHONE: ${address.mobileNumber}');
+    debugPrint('LINE1: ${address.line1}');
+    debugPrint('LINE2: ${address.line2}');
+    debugPrint('FULLTEXT: ${address.fullText}');
+    debugPrint('CITY: ${address.city}');
+    debugPrint('STATE: ${address.state}');
+    debugPrint('PINCODE: ${address.postalCode}');
+    debugPrint('LAT: ${address.latitude}');
+    debugPrint('LNG: ${address.longitude}');
+    debugPrint('==============================');
+
+    _editingAddressId = address.id;
+
+    nameController.text = address.name ?? '';
+    phoneController.text = address.mobileNumber ?? '';
+
+    // Backend currently stores newly-created addresses as:
+    // line1 = house + landmark + street
+    // line2 = null
+    // fullText = null
+    //
+    // If separate fields are available, use them directly.
+    // Otherwise, restore the three fields from the combined line1.
+    final hasSeparateAddressFields =
+        (address.line2 ?? '').trim().isNotEmpty ||
+        (address.fullText ?? '').trim().isNotEmpty;
+
+    if (hasSeparateAddressFields) {
+      houseController.text = address.line1 ?? '';
+      landmarkController.text = address.line2 ?? '';
+      streetController.text = address.fullText ?? '';
+    } else {
+      final parts =
+          (address.line1 ?? '')
+              .split(',')
+              .map((part) => part.trim())
+              .where((part) => part.isNotEmpty)
+              .toList();
+
+      houseController.text = parts.isNotEmpty ? parts[0] : '';
+
+      landmarkController.text = parts.length > 1 ? parts[1] : '';
+
+      streetController.text =
+          parts.length > 2 ? parts.sublist(2).join(', ') : '';
+    }
+
+    cityController.text = address.city ?? '';
+    stateController.text = address.state ?? '';
+    pincodeController.text = address.postalCode ?? '';
+
+    if (address.latitude != null && address.longitude != null) {
+      _selectedLatLng = LatLng(address.latitude!, address.longitude!);
+      _isLocationPicked = true;
+    }
+  }
+
   void _clearForm() {
     _formKey.currentState?.reset();
-    _applyDefaultPhone();
+    phoneController.clear();
     _applyDefaultLocation();
     setState(() {
       _editingAddressId = null;
@@ -452,6 +565,7 @@ class _AddressScreenState extends State<AddressScreen>
     setState(() {
       _editingAddressId = address.id;
     });
+
     _prefillForm(address);
     _tabController.animateTo(1);
   }
@@ -496,9 +610,10 @@ class _AddressScreenState extends State<AddressScreen>
                     CustomSnackbars.showSuccessSnack(
                       context: scaffoldContext,
                       title: "Success",
-                      message: _isEditing
-                          ? "Address Updated Successfully"
-                          : "Address Saved Successfully",
+                      message:
+                          _isEditing
+                              ? "Address Updated Successfully"
+                              : "Address Saved Successfully",
                     );
                     _clearForm();
                     setState(() => _editingAddressId = null);
@@ -577,7 +692,7 @@ class _AddressScreenState extends State<AddressScreen>
               ),
               BlocListener<CurrentCustomerCubit, CurrentCustomerState>(
                 listener: (context, state) {
-                  if (state is CurrentCustomerLoaded) {
+                  if (state is CurrentCustomerLoaded && _isEditing) {
                     _applyDefaultPhone();
                   }
                 },
@@ -624,18 +739,20 @@ class _AddressScreenState extends State<AddressScreen>
                         _buildTextField(
                           label: "Phone Number",
                           controller: phoneController,
-                          enabled: false,
-                          keyboardType: TextInputType.phone,
+                          keyboardType: TextInputType.number,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
                           ],
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
                               return 'Please enter phone number';
                             }
+
                             if (v.trim().length != 10) {
                               return 'Please enter a valid 10-digit phone number';
                             }
+
                             return null;
                           },
                         ),
@@ -688,6 +805,7 @@ class _AddressScreenState extends State<AddressScreen>
                           keyboardType: TextInputType.number,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(6),
                           ],
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {

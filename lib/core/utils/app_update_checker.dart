@@ -22,7 +22,9 @@ Future<void> checkForAppUpdate(BuildContext context) async {
     context,
     currentVersion: upgrader.currentInstalledVersion,
     latestVersion: upgrader.currentAppStoreVersion,
-    onUpdate: () => upgrader.sendUserToAppStore(),
+    onUpdate: () {
+      debugPrint('Update requested');
+    },
     onLater: () {},
   );
 }

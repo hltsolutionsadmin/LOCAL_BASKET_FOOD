@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:local_basket/core/constants/global_exception_handler.dart';
 import 'package:local_basket/core/constants/api_constants.dart';
 import 'package:local_basket/data/model/address/saveAddress/saveAddress_model.dart';
@@ -44,9 +45,13 @@ class SaveAddressRemoteDataSourceImpl implements SaveAddressRemoteDataSource {
         throw UnknownBackendException("Unable to complete this request. Please try again after some time.");
       }
     } on DioException catch (e) {
-      print('SAVE ADDRESS STATUS: ${e.response?.statusCode}');
-      print('SAVE ADDRESS RESPONSE: ${e.response?.data}');
-      print('SAVE ADDRESS PAYLOAD: $payload');
+      debugPrint('===== SAVE ADDRESS REQUEST =====');
+      debugPrint('URL: ${e.requestOptions.uri}');
+      debugPrint('METHOD: ${e.requestOptions.method}');
+      debugPrint('REQUEST DATA: ${e.requestOptions.data}');
+      debugPrint('STATUS: ${e.response?.statusCode}');
+      debugPrint('RESPONSE DATA: ${e.response?.data}');
+      debugPrint('================================');
 
       throw handleDioError(e);
     } catch (e) {
