@@ -42,6 +42,7 @@ import 'package:local_basket/presentation/screen/order/orderSuccess_screen.dart'
 import 'package:local_basket/core/constants/api_constants.dart';
 import 'package:local_basket/core/constants/global_exception_handler.dart';
 import 'package:local_basket/core/utils/address_formatter.dart';
+import 'package:local_basket/data/model/address/getAddress/getAddress_model.dart';
 
 class CartScreen extends StatefulWidget {
   final int? orderId;
@@ -79,6 +80,7 @@ class _CartScreenState extends State<CartScreen> {
   bool loading = false;
   String selectedAddress = "Add Address";
   String? _selectedAddressId;
+  Content? _selectedAddress;
   bool selfOrder = false;
 
   static const double _defaultDeliveryCharge = 30.0;
@@ -314,32 +316,20 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  void _onPaymentFailure(dynamic response) async {
+  void _onPaymentFailure(dynamic response) {
     if (!mounted) return;
-    debugPrint('[Razorpay] failure: ${_formatRazorpayFailure(response)}');
+
+    final message = _formatRazorpayFailure(response);
+
+    debugPrint('[Razorpay] failure: $message');
+
+    setState(() => loading = false);
+
     CustomSnackbars.showErrorSnack(
       context: context,
-      title: 'Failed',
-      message: _formatRazorpayFailure(response),
+      title: 'Payment Cancelled',
+      message: message,
     );
-
-    final error = response is PaymentFailureResponse ? response.error : null;
-    final metadata = error?['metadata'];
-
-    final payload = {
-      "cartId": cartId ?? "",
-      "amount": (_pendingCheckoutAmount ?? _grandTotal).toString(),
-      "paymentId": (metadata?['payment_id'] ?? "").toString(),
-      "razorpayOrderId": (metadata?['order_id'] ?? "").toString(),
-      "razorpaySignature": "",
-      "status": "FAILURE",
-      "b2bUnitId": defaultB2bUnitId,
-    };
-    debugPrint('[Razorpay] verify-payment (failure) payload: $payload');
-    setState(() => loading = true);
-    await context.read<CheckoutCubit>().verifyPayment(payload);
-    if (!mounted) return;
-    setState(() => loading = false);
   }
 
   void _onExternalWallet(_) {
@@ -1108,6 +1098,8 @@ class _CartScreenState extends State<CartScreen> {
               if (selectedAddress == "Add Address") {
                 final defaultAddress = _formatAddress(addresses.first);
                 final defaultAddressId = addresses.first.id;
+
+                _selectedAddress = addresses.first;
                 if (defaultAddress.isNotEmpty) {
                   _saveAddress(defaultAddress, addressId: defaultAddressId);
                   setState(() {
@@ -1321,7 +1313,12 @@ class _CartScreenState extends State<CartScreen> {
                   onEdit: () async {
                     final result = await Navigator.push<Map<String, dynamic>>(
                       context,
-                      MaterialPageRoute(builder: (_) => const AddressScreen()),
+                      MaterialPageRoute(
+                        builder:
+                            (_) => AddressScreen(
+                              selectedAddress: _selectedAddress,
+                            ),
+                      ),
                     );
 
                     final address = result?['address'] as String?;
@@ -1372,8 +1369,8 @@ class _CartScreenState extends State<CartScreen> {
                       promoCodes: _eligiblePromotions,
                       loading: _promotionsLoading,
                       selectedPromoCode: _selectedPromoCode,
-                      enabled: _selectedPaymentMethod != null,
-                      onChanged: (code) => setState(() => _selectedPromoCode = code),
+                      onChanged:
+                          (code) => setState(() => _selectedPromoCode = code),
                     ),
                   ),
                 Expanded(

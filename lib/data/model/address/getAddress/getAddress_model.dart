@@ -138,6 +138,8 @@ class Address {
     required this.country,
     required this.postalCode,
     required this.fullText,
+    this.latitude,
+    this.longitude,
   });
 
   final String? id;
@@ -151,6 +153,8 @@ class Address {
   final String? country;
   final String? postalCode;
   final String? fullText;
+  final double? latitude;
+  final double? longitude;
 
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
@@ -165,6 +169,8 @@ class Address {
       country: json["country"]?.toString(),
       postalCode: json["postalCode"]?.toString(),
       fullText: json["fullText"]?.toString(),
+      latitude: (json["latitude"] as num?)?.toDouble(),
+      longitude: (json["longitude"] as num?)?.toDouble(),
     );
   }
 
@@ -181,6 +187,8 @@ class Address {
       "country": country,
       "postalCode": postalCode,
       "fullText": fullText,
+      "latitude": latitude,
+      "longitude": longitude,
     };
   }
 }

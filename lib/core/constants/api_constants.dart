@@ -97,12 +97,46 @@ String clearCartByIdUrl(String cartId) {
 const productsAddToCartUrl = '/api/carts';
 const saveAddressUrl = '/api/users/me/addresses';
 const getAddressUrl = '/api/users/me/addresses?page=0&size=10';
+
+String updateAddressUrl(String addressId) {
+  return '/api/addresses/$addressId';
+}
+
+/// Base URL for the address update API (PUT /api/addresses/{id}).
+/// Selected explicitly at build time — NOT derived from debug/release —
+/// because both local and dev runs happen in debug builds.
+///
+///   Default (no switch):         dev gateway  (baseUrl)
+///   Local (iOS sim / macOS):     --dart-define=ADDRESS_ENV=local
+///   Local (Android emulator):    --dart-define=ADDRESS_ENV=localAndroid
+///   Custom host (physical dev):  --dart-define=ADDRESS_BASE_URL=http://192.168.1.50:9443
+const addressLocalBaseUrl = 'http://localhost:9443';
+const addressAndroidLocalBaseUrl = 'http://10.0.2.2:9443';
+
+const _addressEnv = String.fromEnvironment('ADDRESS_ENV', defaultValue: '');
+const _addressBaseUrlOverride = String.fromEnvironment(
+  'ADDRESS_BASE_URL',
+  defaultValue: '',
+);
+
+String get addressUpdateBaseUrl {
+  final override = _addressBaseUrlOverride.trim().replaceAll(RegExp(r'/$'), '');
+  if (override.isNotEmpty) return override;
+  switch (_addressEnv) {
+    case 'local':
+      return addressLocalBaseUrl;
+    case 'localAndroid':
+      return addressAndroidLocalBaseUrl;
+    default:
+      return baseUrl;
+  }
+}
 const paymentUrl = '/api/orders/payments/process';
 const paymentReFund = '/order/payments/refund';
 const paymentRefundStatus = '/order/payments/refunds';
 const createOrderUrl = '/order/api/orders/create';
 const reOrderUrl = '/order/api/orders/reorder';
-const deleteAddressUrl = '/usermgmt/api/addresses';
+const deleteAddressUrl = '/api/addresses';
 const defaultAddressUrl = '/usermgmt/api/addresses/setdefaultAddress';
 const addressSavetoCartUrl = '/order/api/carts/address?addressId';
 

@@ -13,11 +13,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class SavedAddressesView extends StatelessWidget {
   final Function(Content)? onAddressSelected;
   final VoidCallback? onAddNewAddressTap;
+  final Function(Content)? onAddressEditTap;
 
   const SavedAddressesView({
     super.key,
     this.onAddressSelected,
     this.onAddNewAddressTap,
+    this.onAddressEditTap,
   });
 
   @override
@@ -211,6 +213,31 @@ class SavedAddressesView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton.icon(
+                    icon: Icon(Icons.edit, size: 18, color: AppColor.PrimaryColor),
+                    label: Text(
+                      "EDIT",
+                      style: TextStyle(color: AppColor.PrimaryColor),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      side: BorderSide(
+                        color: AppColor.PrimaryColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (onAddressEditTap != null) {
+                        onAddressEditTap!(address);
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
                     icon: Icon(Icons.delete, size: 18, color: Colors.red),
                     label: const Text(
                       "DELETE",
@@ -261,19 +288,19 @@ class SavedAddressesView extends StatelessWidget {
     showDialog(
       context: context,
       builder:
-          (context) => AlertDialog(
+          (dialogContext) => AlertDialog(
             title: const Text("Delete Address"),
             content: const Text(
               "Are you sure you want to delete this address?",
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text("CANCEL"),
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                   context.read<DeleteAddressCubit>().deleteAddress(
                     addressId,
                     context,

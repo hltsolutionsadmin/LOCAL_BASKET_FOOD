@@ -14,24 +14,41 @@ class DeleteAddressRemoteDataSourceImpl
   DeleteAddressRemoteDataSourceImpl({required this.client});
 
   @override
-  Future<DeleteAddressModel> DeleteAddress(String addressId) async {
-    try {
-      final response = await client.delete(
-        '$baseUrl$deleteAddressUrl/$addressId',
-      );
+Future<DeleteAddressModel> DeleteAddress(String addressId) async {
+  try {
+    final url = '$baseUrl$deleteAddressUrl/$addressId';
 
-      print('DeleteAddress Response: ${response.data}');
+    print('DELETE URL: $url');
+    print('DELETE ADDRESS ID: $addressId');
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return DeleteAddressModel.fromJson(response.data);
-      } else {
-        throw UnknownBackendException("Unable to complete this request. Please try again after some time.");
-      }
-    } on DioException catch (e) {
-      throw handleDioError(e);
-    } catch (e) {
-      if (e is AppException) rethrow;
-      throw UnknownBackendException("Unable to complete this request. Please try again after some time.");
+    final response = await client.delete(url);
+
+    print('DeleteAddress Response: ${response.data}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return DeleteAddressModel.fromJson(response.data);
     }
+
+    if (response.statusCode == 204) {
+      return DeleteAddressModel(
+        success: true,
+        data: null,
+        message: 'Address deleted successfully',
+      );
+    }
+
+    throw UnknownBackendException(
+      "Unable to complete this request. Please try again after some time.",
+    );
+  } on DioException catch (e) {
+    print('DELETE STATUS: ${e.response?.statusCode}');
+    print('DELETE RESPONSE: ${e.response?.data}');
+    throw handleDioError(e);
+  } catch (e) {
+    if (e is AppException) rethrow;
+    throw UnknownBackendException(
+      "Unable to complete this request. Please try again after some time.",
+    );
   }
+}
 }
