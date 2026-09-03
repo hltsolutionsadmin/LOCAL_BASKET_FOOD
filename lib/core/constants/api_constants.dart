@@ -152,6 +152,10 @@ String validateOfferUrl(String offerId) {
 
 const eligiblePromotionsUrl = '/api/promotions/eligible';
 
+const paymentMethodsUrl = '/api/payment-methods';
+
+const deliveryModesUrl = '/api/delivery-modes';
+
 const ratingReviewUrl = '/product/internal/reviews';
 const createComplaintUrl = '/order/api/orders/complaints';
 const checkoutUrl = '/api/carts/checkout';
